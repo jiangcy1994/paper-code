@@ -4,7 +4,7 @@ import os
 
 class RESIDEOTSDataLoader():
     def __init__(self, img_res=(256, 256)):
-        self.dataset_name = self.__name__
+        self.dataset_name = self.__class__
         self.img_res = img_res
         
         self.clear_path = 'D:/DataSet/RESIDE/OTS_ALPHA/clear/clear_images/'
@@ -69,7 +69,7 @@ class RESIDEOTSDataLoader():
 
     def load_img(self, path):
         img = self.imread(path)
-        img = cv2.imresize(img, self.img_res)
+        img = cv2.resize(img, self.img_res)
         img = img / 127.5 - 1.
         return img[:, :, :]
 
