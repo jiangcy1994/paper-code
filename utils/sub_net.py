@@ -27,14 +27,12 @@ def BASIC_D(num_channels_in, num_discriminator_filter, max_layers=3, use_sigmoid
         t = LeakyReLU(alpha=0.2)(t)
 
     out_feat = num_discriminator_filter*min(2**max_layers, 8)
-    t = ZeroPadding2D()(t)
-    t = Conv2D(out_feat, kernel_size=4,  use_bias=False, name='pyramid_last')(t)
+    t = Conv2D(out_feat, kernel_size=4, padding='same', use_bias=False, name='pyramid_last')(t)
     t = batchnorm()(t, training=1)
     t = LeakyReLU(alpha=0.2)(t)
 
     # final layer
-    t = ZeroPadding2D()(t)
-    t = Conv2D(1, kernel_size=4, name='final'.format(out_feat, 1), 
+    t = Conv2D(1, kernel_size=4, name='final'.format(out_feat, 1), padding='same',
                activation="sigmoid" if use_sigmoid else None
               )(t)    
     return Model(inputs=[input_a], outputs=t)
