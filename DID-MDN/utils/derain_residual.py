@@ -1,8 +1,8 @@
 from keras.layers import Activation, AvgPool2D, BatchNormalization, Concatenate, Conv2D, Input, LeakyReLU, UpSampling2D
 from keras.models import Model
 
-from blocks import BottleneckBlock, TransitionBlock3
-from compose import compose
+from .blocks import BottleneckBlock, TransitionBlock3
+from .compose import compose
 
 __all__ = ['Dense_rain_residual']
 

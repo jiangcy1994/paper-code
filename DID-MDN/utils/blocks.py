@@ -2,7 +2,7 @@ from keras.layers import AvgPool2D, BatchNormalization, Conv2D, LeakyReLU, ReLU,
 from keras.models import Model
 from functools import partial
 
-from compose import compose
+from .compose import compose
 
 def conv_block(in_dim,out_dim):
     return compose(
