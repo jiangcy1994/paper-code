@@ -2,25 +2,7 @@ from keras.layers import AvgPool2D, BatchNormalization, Conv2D, LeakyReLU, ReLU,
 from keras.models import Model
 from functools import partial
 
-from .compose import compose
-
-def conv_block(in_dim,out_dim):
-    return compose(
-        Conv2D(in_dim, kernel_size=3, strides=1, padding='same'),
-        ELU(),
-        Conv2D(in_dim, kernel_size=3, strides=1, padding='same'),
-        ELU(),
-        Conv2D(out_dim, kernel_size=3, strides=1, padding='same'),
-        AvgPool2D()
-    )
-
-def deconv_block(in_dim,out_dim):
-    return compose(
-        Conv2D(out_dim, kernel_size=3, strides=1, padding='same'),
-        ELU(),
-        Conv2D(out_dim, kernel_size=3, strides=1, padding='same'),
-        UpSampling2D()
-    )
+from compose import compose
 
 def BottleneckBlock(x, in_planes, out_planes, dropRate=0.0):
     inter_planes = out_planes * 4
@@ -51,9 +33,18 @@ def TransitionBlock(x, in_planes, out_planes, dropRate=0.0):
     out = UpSampling2D()(out)
     return out
 
-def Dense_Block():
-    return compose(
-        Conv2D(1, kernel_size=3, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2),
-        UpSampling2D(1)
-    )
+def UNetBlock(x, out_channel, name, transposed=False, bn=False, relu=True, dropout=False):
+    if relu:
+        out = ReLU(name='%s.relu' % name)(x)
+    else:
+        out = LeakyReLU(name='%s.leakyrelu' % name)(x)
+    if not transposed:
+        out = Conv2D(out_channel, kernel_size=4, strides=2, padding='same', use_bias=False, name='%s.conv' % name)(out)
+    else:
+        out = Conv2DTranspose(out_channel, kernel_size=4, strides=2, padding='same', use_bias=False, name='%s.tconv' % name)(out)
+    if bn:
+        out = BatchNormalization(name='%s.bn' % name)(out)
+    if dropout:
+        out = Dropout(0.5, name='%s.dropout' % name)(out)
+    return out
+    
