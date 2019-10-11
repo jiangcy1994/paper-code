@@ -1,8 +1,8 @@
-from keras.layers import AvgPool2D, BatchNormalization, Conv2D, LeakyReLU, ReLU, UpSampling2D
+from keras.layers import AveragePooling2D, BatchNormalization, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
 from keras.models import Model
 from functools import partial
 
-from compose import compose
+from .compose import compose
 
 def BottleneckBlock(x, in_planes, out_planes, dropRate=0.0):
     inter_planes = out_planes * 4
@@ -37,7 +37,7 @@ def UNetBlock(x, out_channel, name, transposed=False, bn=False, relu=True, dropo
     if relu:
         out = ReLU(name='%s.relu' % name)(x)
     else:
-        out = LeakyReLU(name='%s.leakyrelu' % name)(x)
+        out = LeakyReLU(alpha=0.2, name='%s.leakyrelu' % name)(x)
     if not transposed:
         out = Conv2D(out_channel, kernel_size=4, strides=2, padding='same', use_bias=False, name='%s.conv' % name)(out)
     else:
@@ -47,4 +47,11 @@ def UNetBlock(x, out_channel, name, transposed=False, bn=False, relu=True, dropo
     if dropout:
         out = Dropout(0.5, name='%s.dropout' % name)(out)
     return out
-    
+
+def Sampling_Block(pool, kernel_size=3):
+    return compose(
+        AveragePooling2D(pool),
+        Conv2D(1, kernel_size=kernel_size, strides=1, padding='same'),
+        LeakyReLU(alpha=0.2),
+        UpSampling2D(pool)
+    )
