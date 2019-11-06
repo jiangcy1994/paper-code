@@ -7,7 +7,7 @@ __all__ = ['D']
 
 def D(nc=6, nf=64):
     
-    din = Input((256, 256, nc))
+    din = Input((512, 512, nc))
     
     x = Conv2D(nf, kernel_size=4, strides=2, padding='same', use_bias=False, name='layer1')(din)
     x = UNetBlock(x, nf * 2, name='layer2', transposed=False, bn=True, relu=False, dropout=False)

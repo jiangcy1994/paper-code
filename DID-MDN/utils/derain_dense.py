@@ -82,10 +82,10 @@ def Dense_base_down0(x):
     
     return out
 
-def Dense_rain():
-    layer_input_img = Input((128,128,3))
+def Dense_rain(img_shape=(128, 128, 3)):
+    layer_input_img = Input(img_shape)
     # all ones in layer_input_label
-    layer_input_label = Input((128,128,8)) 
+    layer_input_label = Input(img_shape[:2] + (8,)) 
 
     t3 = Dense_base_down2(layer_input_img)
     t2 = Dense_base_down1(layer_input_img)
@@ -141,5 +141,5 @@ def Dense_rain():
         Activation('tanh')
     )(clear1)
     
-    model = Model(inputs=[layer_input_img, layer_input_label], outputs=[clear2])
+    model = Model(inputs=[layer_input_img, layer_input_label], outputs=[residual, clear2])
     return model

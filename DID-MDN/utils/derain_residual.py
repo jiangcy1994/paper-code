@@ -66,10 +66,10 @@ def Dense_base_down0(x):
     
     return x6
 
-def Dense_rain_residual():
-    layer_input_img = Input((128,128,3))
+def Dense_rain_residual(img_shape=(128,128,3)):
+    layer_input_img = Input(img_shape)
     # all zeros in layer_input_label
-    layer_input_label = Input((128,128,4)) 
+    layer_input_label = Input(img_shape[:2] + (4,)) 
 
     t3 = Dense_base_down2(layer_input_img)
     t2 = Dense_base_down1(layer_input_img)

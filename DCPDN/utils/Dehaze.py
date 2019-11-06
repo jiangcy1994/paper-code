@@ -10,7 +10,7 @@ from .Dense import *
 __all__ = ['Dehaze']
 
 def Dehaze():
-    inp = Input((256, 256, 3))
+    inp = Input((512, 512, 3))
     G_model = G()
     G2_model = G2()
     
