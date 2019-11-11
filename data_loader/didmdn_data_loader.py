@@ -4,11 +4,11 @@ import itertools
 import numpy as np
 import os
 
-labels = ['Rain_Light', 'Rain_Medium', 'Rain_Heavy']
+rain_labels = ['Rain_Light', 'Rain_Medium', 'Rain_Heavy']
 
 class DIDMDNDataLoader():
     def __init__(self, img_res=(512, 512), 
-                 img_path='D:/DataSet/RESIDE/{0}/training/{1}/'):
+                 img_path='D:/DataSet/DIDMDN/{0}/{1}/'):
         self.dataset_name = self.__class__
         self.img_res = img_res
         
@@ -20,10 +20,10 @@ class DIDMDNDataLoader():
     def load_data(self, batch_size=1, is_testing=False):
         if is_testing:
             img_path = self.img_path.format(self.test_dir, '')
-            rain_base_names = ['{0}.'.format(i) + self.img_type for i in range(4000) ]
+            rain_base_names = ['{0}'.format(i) + self.img_type for i in range(1200) ]
         else:
             img_path = self.img_path.format(self.train_dir, '{0}')
-            rain_base_names = ['{0}.'.format(i) + self.img_type for i in range(1200) ]
+            rain_base_names = ['{0}'.format(i) + self.img_type for i in range(4000) ]
         
         batch_rain_base_names = np.random.choice(rain_base_names, size=batch_size)
 
@@ -40,7 +40,7 @@ class DIDMDNDataLoader():
                 rain_imgs.append(rain_img)
                 labels.append(0)
         else:
-            for rain_base_name, (label_id, label_name) in itertools.product(batch_haze, enumerate(labels)):
+            for rain_base_name, (label_id, label_name) in itertools.product(batch_haze, enumerate(rain_labels)):
                 clear_img, rain_img = self.load_img(img_path.format(label_name) + rain_base_name)
 
                 if not is_testing and np.random.random() > 0.5:
@@ -60,25 +60,28 @@ class DIDMDNDataLoader():
     def load_batch(self, batch_size=1, is_testing=False):
         if is_testing:
             img_path = self.img_path.format(self.test_dir, '')
-            rain_base_names = ['{0}.'.format(i) + self.img_type for i in range(4000) ]
+            rain_base_names = ['{0}'.format(i) + self.img_type for i in range(1200)]
         else:
             img_path = self.img_path.format(self.train_dir, '{0}')
-            rain_base_names = ['{0}.'.format(i) + self.img_type for i in range(1200) ]
+            rain_base_names = ['{0}'.format(i) + self.img_type for i in range(4000)]
         
-        self.n_batches = int(len(rain_base_names) / batch_size)
+        self.n_batches = len(rain_base_names) // batch_size
         total_samples = self.n_batches * batch_size
 
+        
         # Sample n_batches * batch_size from each path list so that model sees all
         # samples from both domains
         rain_base_names = np.random.choice(rain_base_names, total_samples, replace=False)
 
         for i in range(self.n_batches-1):
-            batch_haze = rain_base_names[i*batch_size : (i+1)*batch_size]
+            batch_rain = rain_base_names[i*batch_size : (i+1)*batch_size]
             clear_imgs, rain_imgs, labels = [], [], []
             
             if is_testing:
-                for rain_base_name in batch_haze:
+                for rain_base_name in batch_rain:
                     clear_img, rain_img = self.load_img(img_path + rain_base_name)
+                    print(img_path + rain_base_name)
+                    print(clear_img.shape, rain_img.shape)
 
                     if not is_testing and np.random.random() > 0.5:
                         clear_img = np.fliplr(clear_img)
@@ -88,9 +91,8 @@ class DIDMDNDataLoader():
                     rain_imgs.append(rain_img)
                     labels.append(0)
             else:
-                for rain_base_name, (label_id, label_name) in itertools.product(batch_haze, enumerate(labels)):
-                    clear_img, rain_img = self.load_img(img_path.format(label_name) + rain_base_name)
-
+                for rain_base_name, (label_id, label_name) in itertools.product(batch_rain, enumerate(rain_labels)):
+                    rain_img, clear_img = self.load_img(img_path.format(label_name) + rain_base_name)
                     if not is_testing and np.random.random() > 0.5:
                         clear_img = np.fliplr(clear_img)
                         rain_img = np.fliplr(rain_img)

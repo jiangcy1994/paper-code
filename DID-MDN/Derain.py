@@ -1,3 +1,4 @@
+import datetime
 from keras.layers import Input, Subtract
 from keras.models import Model
 import numpy as np
@@ -23,9 +24,9 @@ class Derain:
         
         self.vgg16_feature = VGG16_Feature(img_shape)
         
-        label_shape = img_shape[:2] + (8,)
+        self.label_shape = img_shape[:2] + (8,)
         img_input = Input(img_shape, name='img_input')
-        label_input = Input(label_shape, name='label_input')
+        label_input = Input(self.label_shape, name='label_input')
         
         residue, x_hat = self.generator([img_input, label_input])
         vgg16_feature = self.vgg16_feature(x_hat)
@@ -45,8 +46,12 @@ class Derain:
         start_time = datetime.datetime.now()
         
         for epoch in range(epochs):
-            for batch_i, (img_input, target_input, label_input) in enumerate(data_loader.load_batch(batch_size)):
+            for batch_i, (img_input, target_input, label) in enumerate(data_loader.load_batch(batch_size)):
                 vgg16_feature = self.vgg16_feature.predict(target_input)
+                label_input = np.zeros((label.shape[0],) + self.label_shape)
+                for i, one_label in enumerate(label_input):
+                    one_label.fill(label[i])
+                
                 loss = self.combined.train_on_batch(
                     [img_input, label_input],
                     [target_input, vgg16_feature[0], vgg16_feature[1]]

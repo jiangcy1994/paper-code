@@ -1,3 +1,4 @@
+import datetime
 from keras.layers import Input, Subtract
 from keras.models import Model
 import numpy as np
@@ -45,8 +46,12 @@ class RainClass:
         start_time = datetime.datetime.now()
         
         for epoch in range(epochs):
-            for batch_i, (img_input, target_input, label_input) in enumerate(data_loader.load_batch(batch_size)):
-                zero_label = np.zeros((label_input.shape[0],) + self.label_shape)
+            for batch_i, (img_input, target_input, label) in enumerate(data_loader.load_batch(batch_size)):
+                zero_label = np.zeros((label.shape[0],) + self.label_shape)
+                label_input = np.zeros((label.shape[0],) + self.label_shape)
+                for i, one_label in enumerate(label_input):
+                    one_label.fill(label[i])
+                
                 loss = self.combined.train_on_batch(
                     [img_input, zero_label],
                     [label_input]
