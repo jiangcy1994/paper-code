@@ -5,7 +5,7 @@
 import tensorflow as tf
 
 def diff_x(input, r):
-    assert input.shape.ndims == 4
+    assert len(input.shape) == 4
 
     left   = input[:, :,         r:2 * r + 1]
     middle = input[:, :, 2 * r + 1:         ] - input[:, :,           :-2 * r - 1]
@@ -17,7 +17,7 @@ def diff_x(input, r):
 
 
 def diff_y(input, r):
-    assert input.shape.ndims == 4
+    assert len(input.shape) == 4
 
     left   = input[:, :, :,         r:2 * r + 1]
     middle = input[:, :, :, 2 * r + 1:         ] - input[:, :, :,           :-2 * r - 1]
@@ -29,13 +29,13 @@ def diff_y(input, r):
 
 
 def box_filter(x, r):
-    assert x.shape.ndims == 4
+    assert len(x.shape) == 4
 
     return diff_y(tf.cumsum(diff_x(tf.cumsum(x, axis=2), r), axis=3), r)
 
 
 def guided_filter(x, y, r, eps=1e-8, nhwc=False):
-    assert x.shape.ndims == 4 and y.shape.ndims == 4
+    assert len(x.shape) == 4 and len(y.shape) == 4
 
     # data format
     if nhwc:

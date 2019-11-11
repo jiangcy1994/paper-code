@@ -45,7 +45,7 @@ class RainClass:
         start_time = datetime.datetime.now()
         
         for epoch in range(epochs):
-            for batch_i, (img_input, label_input) in enumerate(data_loader.load_batch(batch_size)):
+            for batch_i, (img_input, target_input, label_input) in enumerate(data_loader.load_batch(batch_size)):
                 zero_label = np.zeros((label_input.shape[0],) + self.label_shape)
                 loss = self.combined.train_on_batch(
                     [img_input, zero_label],

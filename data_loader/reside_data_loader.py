@@ -42,7 +42,7 @@ class RESIDEOTSDataLoader():
         if is_testing:
             haze_base_names = [*filter(lambda x: int(x.split('_')[0]) in self.valid_range, haze_base_names)]
         else:
-            haze_base_names = [*filter(lambda x: int(x.split('_')[0]) in self.train_range, haze_base_names)]     
+            haze_base_names = [*filter(lambda x: int(x.split('_')[0]) in self.train_range, haze_base_names)]
 
         self.n_batches = int(len(haze_base_names) / batch_size)
         total_samples = self.n_batches * batch_size
