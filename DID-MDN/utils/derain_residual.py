@@ -1,119 +1,152 @@
-from keras.layers import Activation, AvgPool2D, BatchNormalization, Concatenate, Conv2D, Input, LeakyReLU, UpSampling2D
+from .blocks import *
+from compose import *
+from keras.layers import Activation, Concatenate, Conv2D, Input, LeakyReLU
 from keras.models import Model
-
-from .blocks import BottleneckBlock, TransitionBlock3
-from .compose import compose
 
 __all__ = ['Dense_rain_residual']
 
-def Dense_base_down2(x):
-    ## 256x256
-    x1 = BottleneckBlock(x, 3, 13)
-    x1 = TransitionBlock3(x1, 16, 8)
+def Dense1(x, prefix=None):
+    '''
+    2 transition-down layers
+    2 no-sampling transition layers
+    2 transition-up layers
+    kernel size (3, 3)
+    '''
+    if not prefix:
+        prefix = ''
     
-    ###  32x32
-    x2 = BottleneckBlock(x1, 8, 16)
-    x2 = TransitionBlock3(x2, 24, 16)
+    # transition-down layer 1
+    x1 = BottleneckBlock_3(13, name=prefix + 'dense1/db_1/bn')(x)
+    x1 = TransitionBlock_Down(8, name=prefix + 'dense1/db_1/td')(x1)
     
-    ### 16 X 16
-    x3 = BottleneckBlock(x2, 16, 16)
-    x3 = TransitionBlock3(x3, 32, 16)
+    # transition-down layer 2
+    x2 = BottleneckBlock_3(16, name=prefix + 'dense1/db_2/bn')(x1)
+    x2 = TransitionBlock_Down(16, name=prefix + 'dense1/db_2/td')(x2)
     
-    ## Classifier  ##
-    x4 = BottleneckBlock(x3, 16, 16)
-    x4 = TransitionBlock3(x4, 32, 16)
+    # no-sampling transition layer 1
+    x3 = BottleneckBlock_3(16, name=prefix + 'dense1/db_3/bn')(x2)
+    x3 = TransitionBlock_Plain(16, name=prefix + 'dense1/db_3/tp')(x3)
     
-    x4 = Concatenate()([x4, x2])
+    # no-sampling transition layer 2
+    x4 = BottleneckBlock_3(16, name=prefix + 'dense1/db_4/bn')(x3)
+    x4 = TransitionBlock_Plain(16, name=prefix + 'dense1/db_4/tp')(x4)
+    x4 = Concatenate(name=prefix + 'dense1/concat1')([x4, x2])
     
-    x5 = BottleneckBlock(x4, 16, 8)
-    x5 = TransitionBlock3(x5, 24, 8)
+    # transition-up layer 1
+    x5 = BottleneckBlock_3(16, name=prefix + 'dense1/db_5/bn')(x4)
+    x5 = TransitionBlock_Up(16, name=prefix + 'dense1/db_5/tu')(x5)
+    x5 = Concatenate(name=prefix + 'dense1/concat2')([x5, x1])
     
-    x5 = Concatenate()([x5, x1])
-    
-    x6 = BottleneckBlock(x5, 8, 8)
-    x6 = TransitionBlock3(x6, 16, 2)
+    # transition-up layer 2
+    x6 = BottleneckBlock_3(8, name=prefix + 'dense1/db_6/bn')(x5)
+    x6 = TransitionBlock_Up(2, name=prefix + 'dense1/db_6/tu')(x6)
     
     return x6
 
-Dense_base_down1 = Dense_base_down2
+def Dense2(x, prefix=None):
+    '''
+    1 transition-down layers
+    4 no-sampling transition layers
+    1 transition-up layers
+    kernel size (3, 3)
+    '''
+    if not prefix:
+        prefix = ''
+    
+    # transition-down layer 1
+    x1 = BottleneckBlock_3(13, name=prefix + 'dense2/db_1/bn')(x)
+    x1 = TransitionBlock_Down(8, name=prefix + 'dense2/db_1/td')(x1)
+    
+    # no-sampling transition layer 1
+    x2 = BottleneckBlock_3(16, name=prefix + 'dense2/db_2/bn')(x1)
+    x2 = TransitionBlock_Plain(16, name=prefix + 'dense2/db_2/td')(x2)
+    
+    # no-sampling transition layer 2
+    x3 = BottleneckBlock_3(16, name=prefix + 'dense2/db_3/bn')(x2)
+    x3 = TransitionBlock_Plain(16, name=prefix + 'dense2/db_3/tp')(x3)
+    
+    # no-sampling transition layer 3
+    x4 = BottleneckBlock_3(16, name=prefix + 'dense2/db_4/bn')(x3)
+    x4 = TransitionBlock_Plain(16, name=prefix + 'dense2/db_4/tp')(x4)
+    x4 = Concatenate(name=prefix + 'dense2/concat1')([x4, x2])
+    
+    # no-sampling transition layer 4
+    x5 = BottleneckBlock_3(16, name=prefix + 'dense2/db_5/bn')(x4)
+    x5 = TransitionBlock_Plain(16, name=prefix + 'dense2/db_5/tu')(x5)
+    x5 = Concatenate(name=prefix + 'dense2/concat2')([x5, x1])
+    
+    # transition-up layer 1
+    x6 = BottleneckBlock_3(8, name=prefix + 'dense2/db_6/bn')(x5)
+    x6 = TransitionBlock_Up(2, name=prefix + 'dense2/db_6/tu')(x6)
+    
+    return x6
 
-def Dense_base_down0(x):
-    ## 256x256
-    x1 = BottleneckBlock(x, 3, 5)
-    x1 = TransitionBlock3(x1, 8, 4)
+def Dense3(x, prefix=None):
+    '''
+    6 no-sampling transition layers
+    kernel size (3, 3)
+    '''
+    if not prefix:
+        prefix = ''
     
-    ###  32x32
-    x2 = BottleneckBlock(x1, 4, 8)
-    x2 = TransitionBlock3(x2, 12, 12)
+    # no-sampling transition layer 1
+    x1 = BottleneckBlock_3(5, name=prefix + 'dense3/db_1/bn')(x)
+    x1 = TransitionBlock_Plain(4, name=prefix + 'dense3/db_1/td')(x1)
     
-    ### 16 X 16
-    x3 = BottleneckBlock(x2, 12, 4)
-    x3 = TransitionBlock3(x3, 16, 12)
+    # no-sampling transition layer 2
+    x2 = BottleneckBlock_3(8, name=prefix + 'dense3/db_2/bn')(x1)
+    x2 = TransitionBlock_Plain(12, name=prefix + 'dense3/db_2/td')(x2)
     
-    ## Classifier  ##
-    x4 = BottleneckBlock(x3, 12, 4)
-    x4 = TransitionBlock3(x4, 16, 12)
+    # no-sampling transition layer 3
+    x3 = BottleneckBlock_3(4, name=prefix + 'dense3/db_3/bn')(x2)
+    x3 = TransitionBlock_Plain(12, name=prefix + 'dense3/db_3/tp')(x3)
     
-    x4 = Concatenate()([x4, x2])
+    # no-sampling transition layer 4
+    x4 = BottleneckBlock_3(4, name=prefix + 'dense3/db_4/bn')(x3)
+    x4 = TransitionBlock_Plain(12, name=prefix + 'dense3/db_4/tp')(x4)
+    x4 = Concatenate(name=prefix + 'dense3/concat1')([x4, x2])
     
-    x5 = BottleneckBlock(x4, 12, 8)
-    x5 = TransitionBlock3(x5, 20, 4)
+    # no-sampling transition layer 5
+    x5 = BottleneckBlock_3(8, name=prefix + 'dense3/db_5/bn')(x4)
+    x5 = TransitionBlock_Plain(4, name=prefix + 'dense3/db_5/tu')(x5)
+    x5 = Concatenate(name=prefix + 'dense3/concat2')([x5, x1])
     
-    x5 = Concatenate()([x5, x1])
-    
-    x6 = BottleneckBlock(x5, 4, 8)
-    x6 = TransitionBlock3(x6, 12, 2)
+    # no-sampling transition layer 6
+    x6 = BottleneckBlock_3(8, name=prefix + 'dense3/db_6/bn')(x5)
+    x6 = TransitionBlock_Plain(2, name=prefix + 'dense3/db_6/tu')(x6)
     
     return x6
 
 def Dense_rain_residual(img_shape=(128,128,3)):
-    layer_input_img = Input(img_shape)
-    # all zeros in layer_input_label
-    layer_input_label = Input(img_shape[:2] + (4,)) 
+    '''
+    Residual-aware Rain-density Classifier
+    '''
+    
+    img_input = Input(img_shape, name='img_input')
+    label_input = Input(img_shape[:2] + (4,), name='label_input') 
+    prefix='rainclass/'
 
-    t3 = Dense_base_down2(layer_input_img)
-    t2 = Dense_base_down1(layer_input_img)
-    t1 = Dense_base_down0(layer_input_img)
-    t = layer_input_img
+    x = img_input
+    x1 = Dense1(x, prefix=prefix)
+    x2 = Dense2(x, prefix=prefix)
+    x3 = Dense3(x, prefix=prefix)
 
-    t = Concatenate()([t1, t, t2, t3, layer_input_label])
-    t = compose(
-        Conv2D(20, kernel_size=3, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2)
-    )(t)
-
-    t101 = AvgPool2D(32)(t)
-    t102 = AvgPool2D(16)(t)
-    t103 = AvgPool2D(8)(t)
-    t104 = AvgPool2D(4)(t)
-
-    t1010 = compose(
-        Conv2D(1, kernel_size=1, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2),
-        UpSampling2D(32)
-    )(t101)
-    t1020 = compose(
-        Conv2D(1, kernel_size=1, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2),
-        UpSampling2D(16)
-    )(t102)
-    t1030 = compose(
-        Conv2D(1, kernel_size=1, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2),
-        UpSampling2D(8)
-    )(t103)
-    t1040 = compose(
-        Conv2D(1, kernel_size=1, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2),
-        UpSampling2D(4)
-    )(t104)
-
-    t = Concatenate()([t1010, t1020, t1030, t1040, t])
+    x = compose(
+        Concatenate(name=prefix + 'concat1'),
+        Conv2D(20, kernel_size=3, strides=1, padding='same', name=prefix + 'concat1/conv2d'),
+        LeakyReLU(alpha=0.2, name=prefix + 'concat1/lrelu')
+    )([x3, x, x2, x1, label_input])
+    
+    x101 = Sampling_Block(32, name=prefix + 'sample32')(x)
+    x102 = Sampling_Block(16, name=prefix + 'sample16')(x)
+    x103 = Sampling_Block(8, name=prefix + 'sample8')(x)
+    x104 = Sampling_Block(4, name=prefix + 'sample4')(x)
+    x = Concatenate(name=prefix + 'concat2')([x101, x102, x103, x104, x])
 
     out = compose(
-        Conv2D(3, kernel_size=3, strides=1, padding='same'),
-        Activation('tanh')
-    )(t)
+        Conv2D(3, kernel_size=3, strides=1, padding='same', name=prefix + 'out/conv2d'),
+        Activation('tanh', name=prefix + 'out/tanh')
+    )(x)
 
-    model = Model(inputs=[layer_input_img, layer_input_label], outputs=[out])
+    model = Model(inputs=[img_input, label_input], outputs=[out])
     return model

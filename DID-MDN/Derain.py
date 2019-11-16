@@ -78,15 +78,15 @@ class Derain:
                     l2_loss = loss[0]
                     feature_loss0 = loss[1]
                     feature_loss1 = loss[2]
-                    print("[Epoch %d/%d] [Batch %d/%d] [loss: %f, l1: %f, features: (%f, %f)] time: %s " %
+                    print("[Epoch %d/%d] [Batch %d/%d] [loss: %f, l2: %f, features: (%f, %f)] time: %s " %
                           (epoch, epochs,
-                           batch_i, data_loader.n_batches,
+                           batch_i, data_loader.n_batches * 3,
                            total_loss, l2_loss, feature_loss0, feature_loss1, 
                            elapsed_time))
         
         elapsed_time = datetime.datetime.now() - start_time
         # Print Result After Train
-        print("[loss: %f, l1: %f, features: (%f, %f)] time: %s " %
+        print("[loss: %f, l2: %f, features: (%f, %f)] time: %s " %
               (total_loss, l2_loss, feature_loss0, feature_loss1, 
                elapsed_time))
     
