@@ -1,68 +1,29 @@
-from keras.layers import AvgPool2D, BatchNormalization, Conv2D, LeakyReLU, ReLU, UpSampling2D
-from keras.models import Model
+from keras.layers import AvgPool2D, Conv2D, LeakyReLU, UpSampling2D
 from functools import partial
+from base_blocks import *
+from compose import *
 
-from .compose import compose
+__all__ = ['BottleneckBlock_3', 'BottleneckBlock_5', 'BottleneckBlock_7', 
+           'TransitionBlock_Up', 'TransitionBlock_Down', 'TransitionBlock_Plain', 
+           'UpSampling_Block', 'Sampling_Block']
 
-def conv_block(in_dim,out_dim):
+DownSamplingLayer = partial(AvgPool2D)
+UpSamplingLayer = partial(UpSampling2D, interpolation='nearest')
+
+BottleneckBlock_3 = partial(bottleneck_block, kernal_size_2=3)
+BottleneckBlock_5 = partial(bottleneck_block, kernal_size_2=5)
+BottleneckBlock_7 = partial(bottleneck_block, kernal_size_2=7)
+
+TransitionBlock_Down = partial(transition_block, transition_layer=DownSamplingLayer, transition_name='down')
+TransitionBlock_Plain = partial(transition_block)
+TransitionBlock_Up = partial(transition_block, transition_layer=UpSamplingLayer, transition_name='up')
+
+def UpSampling_Block(up_sample_size=1, name=None):
     return compose(
-        Conv2D(in_dim, kernel_size=3, strides=1, padding='same'),
-        ELU(),
-        Conv2D(in_dim, kernel_size=3, strides=1, padding='same'),
-        ELU(),
-        Conv2D(out_dim, kernel_size=3, strides=1, padding='same'),
-        AvgPool2D()
+        Conv2D(1, kernel_size=3, strides=1, padding='same', 
+               name=name + '/conv2d' if name else None),
+        LeakyReLU(alpha=0.2, name=name + '/lrelu' if name else None),
+        UpSampling2D(up_sample_size, name=name + '/us' if name else None)
     )
 
-def deconv_block(in_dim,out_dim):
-    return compose(
-        Conv2D(out_dim, kernel_size=3, strides=1, padding='same'),
-        ELU(),
-        Conv2D(out_dim, kernel_size=3, strides=1, padding='same'),
-        UpSampling2D()
-    )
-        
-def _bottleneck_block(x, in_planes, out_planes, _kernal_size_2, dropRate=0.0):
-    inter_planes = out_planes * 4
-    out = compose(
-        BatchNormalization(),
-        ReLU(),
-        Conv2D(inter_planes, kernel_size=1, strides=1, padding='same', use_bias=False)
-    )(x)
-    if dropRate:
-        out = Dropout(dropRate)(out)
-    out = compose(
-        BatchNormalization(),
-        ReLU(),
-        Conv2D(out_planes, kernel_size=_kernal_size_2, strides=1, padding='same', use_bias=False)
-    )(out)
-    if dropRate:
-        out = Dropout(dropRate)(out)
-    return out
-
-BottleneckBlock = partial(_bottleneck_block, _kernal_size_2=3)
-BottleneckBlock1 = partial(_bottleneck_block, _kernal_size_2=5)
-BottleneckBlock2 = partial(_bottleneck_block, _kernal_size_2=7)
-
-def _transition_block(x, in_planes, out_planes, _transition_func=None, dropRate=0.0):
-    out = compose(
-        BatchNormalization(),
-        ReLU(),
-        Conv2D(out_planes, kernel_size=1, strides=1, padding='same', use_bias=False)
-    )(x)
-    if dropRate:
-        out = Dropout(dropRate)(out)
-    if _transition_func:
-        out = _transition_func(out)
-    return out
-
-TransitionBlock = partial(_transition_block, _transition_func=UpSampling2D())
-TransitionBlock1 = partial(_transition_block, _transition_func=AvgPool2D())
-TransitionBlock3 = partial(_transition_block)
-
-def Dense_Block():
-    return compose(
-        Conv2D(1, kernel_size=3, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2),
-        UpSampling2D(1)
-    )
+Sampling_Block = partial(sampling_block, ds_layer=DownSamplingLayer, us_layer=UpSamplingLayer, kernel_size=1)
