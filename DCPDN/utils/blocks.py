@@ -1,57 +1,52 @@
-from keras.layers import AveragePooling2D, BatchNormalization, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
-from keras.models import Model
+from base_blocks import *
+from compose import *
+from keras.layers import AvgPool2D, BatchNormalization, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
 from functools import partial
 
-from .compose import compose
+__all__ = ['BottleneckBlock', 'TransitionBlock', 'Sampling_Block', 'UNetBlock']
 
-def BottleneckBlock(x, in_planes, out_planes, dropRate=0.0):
-    inter_planes = out_planes * 4
-    out = compose(
-        BatchNormalization(),
-        ReLU(),
-        Conv2D(inter_planes, kernel_size=1, strides=1, padding='same', use_bias=False)
-    )(x)
-    if dropRate:
-        out = Dropout(dropRate)(out)
-    out = compose(
-        BatchNormalization(),
-        ReLU(),
-        Conv2D(out_planes, kernel_size=3, strides=1, padding='same', use_bias=False)
-    )(out)
-    if dropRate:
-        out = Dropout(dropRate)(out)
-    return out
+DownSamplingLayer = partial(AvgPool2D)
+UpSamplingLayer = partial(UpSampling2D, interpolation='nearest')
 
-def TransitionBlock(x, in_planes, out_planes, dropRate=0.0):
-    out = compose(
-        BatchNormalization(),
-        ReLU(),
-        Conv2D(out_planes, kernel_size=1, strides=1, padding='same', use_bias=False)
-    )(x)
-    if dropRate:
-        out = Dropout(dropRate)(out)
-    out = UpSampling2D()(out)
-    return out
+BottleneckBlock = partial(bottleneck_block, kernal_size_2=3)
 
-def UNetBlock(x, out_channel, name, transposed=False, bn=False, relu=True, dropout=False):
+TransitionBlock = partial(transition_block, transition_layer=UpSamplingLayer, transition_name='us')
+
+Sampling_Block = partial(sampling_block, ds_layer=DownSamplingLayer, us_layer=UpSamplingLayer, kernel_size=3)
+
+
+def UNetBlock(filters, name, transposed=False, bn=False, relu=True, dropout=False):
+    
     if relu:
-        out = ReLU(name='%s.relu' % name)(x)
+        block_1 = compose(
+            ReLU(name='%s.relu' % name)
+        )
     else:
-        out = LeakyReLU(alpha=0.2, name='%s.leakyrelu' % name)(x)
+        block_1 = compose(
+            LeakyReLU(alpha=0.2, name='%s.leakyrelu' % name)
+        )
+        
     if not transposed:
-        out = Conv2D(out_channel, kernel_size=4, strides=2, padding='same', use_bias=False, name='%s.conv' % name)(out)
+        block_2 = compose(
+            Conv2D(filters, kernel_size=4, strides=2, padding='same', use_bias=False, name='%s.conv' % name)
+        )
     else:
-        out = Conv2DTranspose(out_channel, kernel_size=4, strides=2, padding='same', use_bias=False, name='%s.tconv' % name)(out)
+        block_2 = compose(
+            Conv2DTranspose(filters, kernel_size=4, strides=2, padding='same', use_bias=False, name='%s.tconv' % name)
+        )
+    
+    layers = compose(block_1, block_2)
+    
     if bn:
-        out = BatchNormalization(name='%s.bn' % name)(out)
+        layers = compose(
+            layers,
+            BatchNormalization(name='%s.bn' % name)
+        )
+    
     if dropout:
-        out = Dropout(0.5, name='%s.dropout' % name)(out)
-    return out
-
-def Sampling_Block(pool, kernel_size=3):
-    return compose(
-        AveragePooling2D(pool),
-        Conv2D(1, kernel_size=kernel_size, strides=1, padding='same'),
-        LeakyReLU(alpha=0.2),
-        UpSampling2D(pool)
-    )
+        layers = compose(
+            layers,
+            Dropout(0.5, name='%s.dropout' % name)
+        )
+        
+    return layers

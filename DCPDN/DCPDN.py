@@ -42,7 +42,7 @@ class DCPDN:
         
         gradient_h_hat = self.get_gradient_h(trans_hat)
         gradient_v_hat = self.get_gradient_v(trans_hat)
-        features_content0 ,features_content1 = self.vgg16_feature(trans_hat)
+        features_content0, features_content1 = self.vgg16_feature(trans_hat)
         
         self.combined = Model(inputs=[img_input, target_input, trans_input, ato_input],
                               outputs=[x_hat, # L_L1 for overall
@@ -83,6 +83,8 @@ class DCPDN:
     def train(self, data_loader, epochs, batch_size=1, sample_interval=50):
 
         start_time = datetime.datetime.now()
+        d_loss = 0
+        g_loss = []
 
         # Adversarial loss ground truths
         valid = np.ones((batch_size,) + self.disc_patch)
@@ -125,16 +127,53 @@ class DCPDN:
                                                        ato_input,
                                                        valid
                                                       ])
+                
+                if batch_i % sample_interval == 0:
+                    elapsed_time = datetime.datetime.now() - start_time
 
-                elapsed_time = datetime.datetime.now() - start_time
+                    # Plot the progress
+                    print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %05f, Lt: %05f, La: %05f, Ld: %05f] time: %s " %
+                           (epoch, epochs,
+                            batch_i, data_loader.n_batches,
+                            d_loss,
+                            g_loss[7],
+                            np.sum(g_loss[1:6]),
+                            g_loss[6],
+                            g_loss[0],
+                            elapsed_time))
+        
+        elapsed_time = datetime.datetime.now() - start_time
+        # Print Result After Train
+        print("[D loss: %f] [G loss: %05f, Lt: %05f, La: %05f, Ld: %05f] time: %s " %
+              (d_loss,
+               g_loss[7],
+               np.sum(g_loss[1:6]),
+               g_loss[6],
+               g_loss[0],
+               elapsed_time))
 
-                # Plot the progress
-                print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %05f, Lt: %05f, La: %05f, Ld: %05f] time: %s " \
-                                                                        % ( epoch, epochs,
-                                                                            batch_i, data_loader.n_batches,
-                                                                            d_loss,
-                                                                            g_loss[7],
-                                                                            np.sum(g_loss[1:6]),
-                                                                            g_loss[6],
-                                                                            g_loss[0],
-                                                                            elapsed_time))
+    def predict(self, img_input):
+        img_output, _ = self.generator.predict([img_input])
+        return img_output
+    
+    def save_model(self, dir_name='model'):
+        if not os.path.exists(dir_name) and not os.path.isdir(dir_name):
+            os.mkdir(dir_name)
+            
+        self.discriminator.save_weights(dir_name + '/dcpdn_discriminator.hdf5')
+        self.generator.save_weights(dir_name + '/dcpdn_generator.hdf5')
+        
+    def load_model(self, dir_name='model'):
+        discriminator_name = dir_name + '/dcpdn_discriminator.hdf5'
+        generator_name = dir_name + '/dcpdn_generator.hdf5'
+        
+        if os.path.exists(discriminator_name) and os.path.isfile(discriminator_name):
+            self.discriminator.load_model(discriminator_name)
+        else:
+            print('no discriminator model weights file in {0}'.format(discriminator_name))
+
+        if os.path.exists(generator_name) and os.path.isfile(generator_name):
+            self.generator.load_model(generator_name)
+        else:
+            print('no discriminator model weights file in {0}'.format(generator_name))
+    

@@ -1,70 +1,77 @@
+from .blocks import *
+from compose import *
 from keras.layers import Activation, Concatenate, Conv2D, Input
 from keras.models import Model
 
-from .blocks import UNetBlock, Sampling_Block
-
 __all__ = ['G', 'G2']
 
-def G(input_nc=3, output_nc=3, nf=64):
-    din = Input((256, 256, input_nc))
-    x = din
+def G(img_shape=(256, 256), input_num_channel=3, output_num_channel=3, num_filters=64):
+    
+    img_input = Input(img_shape + (input_num_channel,))
+    x = img_input
     outs = []
     
-    x = Conv2D(nf, kernel_size=4, strides=2, padding='same', use_bias=False, name='layer1')(x)
+    x = Conv2D(num_filters, kernel_size=4, strides=2, padding='same', use_bias=False, name='layer1')(x)
     outs.append(x)
     
-    for layer_idx, nf_multi in enumerate([2, 4, 8, 8, 8, 8, 8]):
+    for layer_idx, multiplier in enumerate([2, 4, 8, 8, 8, 8, 8]):
         name = 'layer%d' % (layer_idx + 2)
-        x = UNetBlock(x, nf * nf_multi, name, transposed=False, bn=True, relu=False, dropout=False)
+        x = UNetBlock(num_filters * multiplier, name, transposed=False, bn=True, relu=False, dropout=False)(x)
         outs.append(x)
 
-    x = UNetBlock(x, nf*8, 'dlayer%d' % 8, transposed=True, bn=False, relu=True, dropout=True)
-
-    for layer_idx, nf_multi in enumerate([8, 8, 8, 4, 2, 1]):
+    x = UNetBlock(num_filters * 8, 'dlayer8', transposed=True, bn=False, relu=True, dropout=True)(x)
+multiplier
+    for layer_idx, multiplier in enumerate([8, 8, 8, 4, 2, 1]):
         layer_idx = 7 - layer_idx
         name = 'dlayer%d' % layer_idx
         x = Concatenate()([x, outs[layer_idx - 1]])
-        x = UNetBlock(x, nf * nf_multi, name, transposed=True, bn=True, relu=True, dropout=False)
+        x = UNetBlock(num_filters * multiplier, name, transposed=True, bn=True, relu=True, dropout=False)(x)
 
     x = Concatenate()([x, outs[0]])
-    x = UNetBlock(x, 20, 'dlayer%d' % 1, transposed=True, bn=False, relu=True, dropout=False)
+    x = UNetBlock(20, 'dlayer%d' % 1, transposed=True, bn=False, relu=True, dropout=False)(x)
     
-    x1010 = Sampling_Block(16)(x)    
-    x1020 = Sampling_Block(8)(x)    
-    x1030 = Sampling_Block(4)(x)    
-    x1040 = Sampling_Block(2)(x)
+    dehaze = compose(
+        Concatenate(),
+        Conv2D(output_num_channel, kernel_size=3, strides=1, padding='same', use_bias=False, name='layerfinal.conv'),
+        Activation('tanh', name='layerfinal.tanh')
+    )([
+        Sampling_Block(16)(x),
+        Sampling_Block(8)(x),
+        Sampling_Block(4)(x),
+        Sampling_Block(2)(x),
+        x
+    ])
 
-    dehaze = Concatenate()([x1010, x1020, x1030, x1040, x])
-    dout = Conv2D(output_nc, kernel_size=3, strides=1, padding='same', use_bias=False, name='layerfinal.conv')(dehaze)
-    dout = Activation('tanh', name='layerfinal.tanh')(dout)
-
-    model = Model(inputs=[din], outputs=[dout])
+    model = Model(inputs=[img_input], outputs=[dehaze])
     return model
 
-def G2(input_nc=3, output_nc=3, nf=8):
-    din = Input((256, 256, input_nc))
-    x = din
+def G2(img_shape=(256, 256), input_num_channel=3, output_num_channel=3, num_filters=8):
+    
+    img_input = Input(img_shape + (input_num_channel,))
+    x = img_input
     outs = []
     
-    x = Conv2D(nf, kernel_size=4, strides=2, padding='same', use_bias=False, name='layer1')(x)
+    x = Conv2D(num_filters, kernel_size=4, strides=2, padding='same', use_bias=False, name='layer1')(x)
     outs.append(x)
     
-    for layer_idx, nf_multi in enumerate([2, 4, 8, 8, 8, 8, 8]):
+    for layer_idx, multiplier in enumerate([2, 4, 8, 8, 8, 8, 8]):
         name = 'layer%d' % (layer_idx + 2)
-        x = UNetBlock(x, nf * nf_multi, name, transposed=False, bn=True, relu=False, dropout=False)
+        x = UNetBlock(num_filters * multiplier, name, transposed=False, bn=True, relu=False, dropout=False)(x)
         outs.append(x)
 
-    x = UNetBlock(x, nf*8, 'dlayer8', transposed=True, bn=False, relu=True, dropout=True)
+    x = UNetBlock(num_filters * 8, 'dlayer8', transposed=True, bn=False, relu=True, dropout=True)(x)
 
-    for layer_idx, nf_multi in enumerate([8, 8, 8, 4, 2, 1]):
+    for layer_idx, multiplier in enumerate([8, 8, 8, 4, 2, 1]):
         layer_idx = 7 - layer_idx
         name = 'dlayer%d' % layer_idx
         x = Concatenate()([x, outs[layer_idx - 1]])
-        x = UNetBlock(x, nf * nf_multi, name, transposed=True, bn=True, relu=True, dropout=False)
+        x = UNetBlock(num_filters * multiplier, name, transposed=True, bn=True, relu=True, dropout=False)(x)
 
-    x = Concatenate()([x, outs[0]])
-    x = UNetBlock(x, output_nc, 'dlayer1', transposed=True, bn=False, relu=True, dropout=False)
-    x = Activation('tanh', name='dlayer1.tanh')(x)
+    output = compose(
+        Concatenate(),
+        UNetBlock(output_num_channel, 'dlayer1', transposed=True, bn=False, relu=True, dropout=False),
+        Activation('tanh', name='dlayer1.tanh')
+    )([x, outs[0]])
 
-    model = Model(inputs=[din], outputs=[x])
+    model = Model(inputs=[img_input], outputs=[output])
     return model

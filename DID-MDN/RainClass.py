@@ -76,7 +76,7 @@ class RainClass:
         # Print Result After Train
         print("[loss: %f, l_Er: %f, l_C:%f] time: %s " %
               (total_loss, l_Er, l_C, elapsed_time))
-            
+
     def predict(self, img_input):
         zero_label = np.zeros((label.shape[0],) + self.label_shape)
         result = self.generator.predict([img_input, zero_label])
