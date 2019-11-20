@@ -70,11 +70,11 @@ class DCPDN:
                              )
     
     def build_generator(self):
-        return Dehaze()
+        return Dehaze(self.img_shape)
     
     def build_discriminator(self):
-        input0 = Input((512, 512, 3))
-        input1 = Input((512, 512, 3))
+        input0 = Input(self.img_shape)
+        input1 = Input(self.img_shape)
         inp = Concatenate()([input0, input1])
         D_model = D()
         model = Model(inputs=[input0, input1], outputs=[D_model(inp)])

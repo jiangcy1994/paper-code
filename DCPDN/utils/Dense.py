@@ -12,7 +12,7 @@ bottleneck_transition_block = lambda bottleneck_filter, transition_filter: compo
 
 def Dense(img_shape=(256,256,3)):
     
-    dense121_model = densenet.DenseNet121(include_top=False, weights='imagenet', img_shape)
+    dense121_model = densenet.DenseNet121(include_top=False, weights='imagenet', input_shape=img_shape)
     dense121_model.layers.remove(dense121_model.layers[1])
 
     x0 = dense121_model.input
@@ -35,7 +35,7 @@ def Dense(img_shape=(256,256,3)):
             bottleneck_transition_block(128, 64),
             bottleneck_transition_block(64, 32),
             bottleneck_transition_block(32, 16)
-        )(x5)
+        )(x5),
         x0
     ])
     

@@ -3,7 +3,7 @@ from compose import *
 from .Dense import *
 from .G import *
 from keras import backend as K
-from keras.layers import Activation, Add, AvgPool2D, Concatenate, Conv2D, Input, Lambda, LeakyReLU, Multiply, Subtract UpSampling2D
+from keras.layers import Activation, Add, AvgPool2D, Concatenate, Conv2D, Input, Lambda, LeakyReLU, Multiply, Subtract, UpSampling2D
 from keras.models import Model
 
 __all__ = ['Dehaze']
@@ -22,7 +22,7 @@ def Dehaze(img_shape=(512, 512, 3)):
     atp = UpSampling2D()(LeakyReLU(alpha=0.2)(atp))
     
 #     dehaze = (inp - atp) / zz + atp
-    dehaze = Subtract()([inp, atp])
+    dehaze = Subtract()([img_input, atp])
     dehaze = Multiply()([dehaze, zz])
     dehaze = Add()([dehaze, atp])
 
