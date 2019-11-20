@@ -9,7 +9,7 @@ multiplier_cal = lambda layer_idx: min(2 ** layer_idx, 8)
 def D(input_num_channel=3, output_num_channel=3, num_filters=8, num_layers=3):
     
     layers = compose(
-        Conv2D(num_filters, kernel_size=4, strides=2, padding='same', name='layer1')
+        Conv2D(num_filters, kernel_size=4, strides=2, padding='same', use_bias=False, name='layer1')
     )
     
     for layer_idx in range(1, num_layers - 1):
