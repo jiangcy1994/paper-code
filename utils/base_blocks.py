@@ -1,9 +1,9 @@
 from compose import *
 from functools import partial
-from keras.layers import AvgPool2D, BatchNormalization, Conv2D, LeakyReLU, ReLU, UpSampling2D
+from keras.layers import AvgPool2D, BatchNormalization, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
 from keras.models import Model
 
-__all__ = ['bottleneck_block', 'transition_block', 'sampling_block']
+__all__ = ['bottleneck_block', 'transition_block', 'sampling_block', 'unet_block']
 
 def conv_block(in_dim, out_dim):
     return compose(
@@ -76,3 +76,41 @@ def sampling_block(pool, ds_layer, us_layer, kernel_size=1, name=None):
         LeakyReLU(alpha=0.2, name=name + '/lrelu' if name else None),
         us_layer(pool, name=name + '/us' if name else None)
     )
+
+def unet_block(filters, kernel_size, strides, name, transposed=False, bn=False, relu=True, dropout=False):
+    
+    if relu:
+        block_1 = compose(
+            ReLU(name='%s.relu' % name)
+        )
+    else:
+        block_1 = compose(
+            LeakyReLU(alpha=0.2, name='%s.leakyrelu' % name)
+        )
+        
+    if not transposed:
+        block_2 = compose(
+            Conv2D(filters, kernel_size=kernel_size, strides=strides, 
+                   padding='same', use_bias=False, name='%s.conv' % name)
+        )
+    else:
+        block_2 = compose(
+            Conv2DTranspose(filters, kernel_size=kernel_size, strides=strides, 
+                            padding='same', use_bias=False, name='%s.tconv' % name)
+        )
+    
+    layers = compose(block_1, block_2)
+    
+    if bn:
+        layers = compose(
+            layers,
+            BatchNormalization(name='%s.bn' % name)
+        )
+    
+    if dropout:
+        layers = compose(
+            layers,
+            Dropout(0.5, name='%s.dropout' % name)
+        )
+        
+    return layers
