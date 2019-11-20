@@ -87,7 +87,7 @@ class CycleGAN():
     def build_discriminator(self):
         return BASIC_D(self.channels, self.discriminator_filter)
     
-    def train(self, data_loader, epochs, batch_size=1, sample_interval=50):
+    def train(self, data_loader, epochs, batch_size=1, sample_interval=50, info_interval=100):
 
         start_time = datetime.datetime.now()
 
@@ -132,12 +132,13 @@ class CycleGAN():
                 elapsed_time = datetime.datetime.now() - start_time
 
                 # Plot the progress
-                print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] time: %s " \
-                                                                        % ( epoch, epochs,
-                                                                            batch_i, data_loader.n_batches,
-                                                                            d_loss[0], 100*d_loss[1],
-                                                                            g_loss[0],
-                                                                            np.mean(g_loss[1:3]),
-                                                                            np.mean(g_loss[3:5]),
-                                                                            np.mean(g_loss[5:6]),
-                                                                            elapsed_time))
+                if batch_i % info_interval == data_loader.n_batches % info_interval:
+                    print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] time: %s "
+                           % (epoch, epochs,
+                              batch_i, data_loader.n_batches,
+                              d_loss[0], 100*d_loss[1],
+                              g_loss[0],
+                              np.mean(g_loss[1:3]),
+                              np.mean(g_loss[3:5]),
+                              np.mean(g_loss[5:6]),
+                              elapsed_time))
