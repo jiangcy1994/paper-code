@@ -1,12 +1,12 @@
 import datetime
-from keras.applications import vgg16
-from keras.layers import Input, ZeroPadding2D, Concatenate
+from keras.layers import Input
 from keras.models import Model
 import numpy as np
 import sys
-sys.path.append('../')
+sys.path.append('../utils')
 
-from utils.sub_net import *
+from sub_net import *
+from utils import *
 
 class CycleDehaze():
     
@@ -45,17 +45,7 @@ class CycleDehaze():
         self.generator_B_to_A.name = 'generator_B_to_A'
 
         # Build the Vgg16 functions
-        vgg16_model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=img_shape)
-        vgg16_input = vgg16_model.layers[0].input
-        vgg16_2pool_feature = vgg16_model.layers[6].output
-        vgg16_5pool_feature = vgg16_model.layers[18].output
-        vgg16_5pool_feature_pad = ZeroPadding2D(int((int(vgg16_2pool_feature.shape[1]) - int(vgg16_5pool_feature.shape[1])) / 2))(vgg16_5pool_feature)
-        vgg16_all_feature = Concatenate()([vgg16_2pool_feature, vgg16_5pool_feature_pad])
-
-        vgg16_alter = Model(inputs=[vgg16_input], outputs=[vgg16_all_feature])
-        self.vgg16_extract_feature = Model(
-            inputs=[vgg16_input], 
-            outputs=vgg16_all_feature)
+        self.vgg16_extract_feature = vgg16_feature_net(img_shape)
         self.vgg16_extract_feature.trainable = False
         
         # Input images from both domains
@@ -89,14 +79,17 @@ class CycleDehaze():
                               outputs=[valid_A, valid_B,
                                        reconstr_A, reconstr_B,
                                        img_A_id, img_B_id,
-                                       vgg16_feature_A, vgg16_feature_B])
+                                       vgg16_feature_A[0], vgg16_feature_B[0],
+                                       vgg16_feature_A[1], vgg16_feature_B[1]])
         self.combined.compile(loss=['mse', 'mse',
                                     'mae', 'mae',
                                     'mae', 'mae',
+                                    'mse', 'mse',
                                     'mse', 'mse'],
                             loss_weights=[1, 1,
                                           self.lambda_cycle, self.lambda_cycle,
                                           self.lambda_id, self.lambda_id,
+                                          self.lambda_perceptual, self.lambda_perceptual,
                                           self.lambda_perceptual, self.lambda_perceptual
                                          ],
                             optimizer='rmsprop')
@@ -153,7 +146,8 @@ class CycleDehaze():
                                                       [valid, valid,
                                                        imgs_A, imgs_B,
                                                        imgs_A, imgs_B,
-                                                       vgg16_feature_A, vgg16_feature_B])
+                                                       vgg16_feature_A[0], vgg16_feature_B[0],
+                                                       vgg16_feature_A[1], vgg16_feature_B[1]])
 
                 elapsed_time = datetime.datetime.now() - start_time
 
@@ -166,5 +160,5 @@ class CycleDehaze():
                                                                             np.mean(g_loss[1:3]),
                                                                             np.mean(g_loss[3:5]),
                                                                             np.mean(g_loss[5:6]),
-                                                                            np.sum(g_loss[6:8]),
+                                                                            np.sum(g_loss[6:10]),
                                                                             elapsed_time))
