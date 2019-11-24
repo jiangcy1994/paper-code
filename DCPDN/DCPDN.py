@@ -15,7 +15,7 @@ class DCPDN:
         self.img_shape = img_shape
         self.lambda_img = lambda_img
         self.lambda_gan = lambda_gan
-        self.vgg16_feature = VGG16_Feature(img_shape)
+        self.vgg16_feature = vgg16_feature_net(img_shape)
         self.vgg16_feature.name = 'vgg16_feature'
         
         label_real = np.ones(self.img_shape)

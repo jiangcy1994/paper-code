@@ -1,7 +1,7 @@
-from keras.layers import AvgPool2D, Conv2D, LeakyReLU, UpSampling2D
-from functools import partial
 from base_blocks import *
 from compose import *
+from functools import partial
+from keras.layers import AvgPool2D, Conv2D, LeakyReLU, UpSampling2D
 
 __all__ = ['BottleneckBlock_3', 'BottleneckBlock_5', 'BottleneckBlock_7', 
            'TransitionBlock_Up', 'TransitionBlock_Down', 'TransitionBlock_Plain', 

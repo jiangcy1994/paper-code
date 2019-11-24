@@ -3,4 +3,4 @@ sys.path.append('../utils/')
 
 from .D import *
 from .Dehaze import *
-from .VGG16_Feature import *
+from .vgg16_feature import *

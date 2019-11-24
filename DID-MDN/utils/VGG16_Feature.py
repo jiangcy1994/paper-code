@@ -1,13 +1,10 @@
 from keras.applications import vgg16
-from keras.models import Model
+from pretrained_net_feature import *
 
-__all__ = ['VGG16_Feature']
+__all__ = ['vgg16_feature_net']
 
-def VGG16_Feature(img_shape=(256, 256, 3)):
-    vgg16_model = vgg16.VGG16(include_top=False, weights='imagenet', input_shape=img_shape)
-    model = Model(inputs=[vgg16_model.input], outputs=[
-        vgg16_model.layers[2].output,
-        vgg16_model.layers[5].output
-    ])
-    model.trainable = False
-    return model
+vgg16_feature_net = lambda img_shape=(256, 256, 3): pretrained_net_feature(
+    pretrained_net=vgg16.VGG16,
+    output_layers=['block1_conv2', 'block2_conv2'],
+    input_shape=img_shape
+)

@@ -21,8 +21,7 @@ class Derain:
 
         self.generator = self.build_generator()
         self.generator.name = 'generator'
-        
-        self.vgg16_feature = VGG16_Feature(img_shape)
+        self.vgg16_feature = vgg16_feature_net(img_shape)
         
         img_input = Input(img_shape, name='img_input')
         label_input = Input(self.label_shape, name='label_input')
