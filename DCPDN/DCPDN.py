@@ -37,8 +37,8 @@ class DCPDN:
         x_hat, trans_hat, atp_hat, dehaze21 = self.generator(img_input)
         fake_output = self.discriminator([trans_hat, x_hat])
         
-        self.get_gradient_h = Lambda(function=lambda x:K.abs(x[:, :, :, :-1] - x[:, :, :, 1:]), name='get_gradient_h')
-        self.get_gradient_v = Lambda(function=lambda x:K.abs(x[:, :, :-1, :] - x[:, :, 1:, :]), name='get_gradient_v')
+        self.get_gradient_h = Lambda(function=lambda x:K.abs(x[:, :, :-1] - x[:, :, 1:]), name='get_gradient_h')
+        self.get_gradient_v = Lambda(function=lambda x:K.abs(x[:, :-1] - x[:, 1:]), name='get_gradient_v')
         
         gradient_h_hat = self.get_gradient_h(trans_hat)
         gradient_v_hat = self.get_gradient_v(trans_hat)
