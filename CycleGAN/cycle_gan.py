@@ -129,10 +129,10 @@ class CycleGAN():
                                                        imgs_A, imgs_B,
                                                        imgs_A, imgs_B])
 
-                elapsed_time = datetime.datetime.now() - start_time
 
                 # Plot the progress
                 if batch_i % info_interval == data_loader.n_batches % info_interval:
+                    elapsed_time = datetime.datetime.now() - start_time
                     print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] time: %s "
                            % (epoch, epochs,
                               batch_i, data_loader.n_batches,
