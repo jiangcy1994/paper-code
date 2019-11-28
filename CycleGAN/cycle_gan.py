@@ -85,7 +85,7 @@ class CycleGAN():
         return UNET_G(self.img_rows, num_generator_filter=self.generator_filter)
     
     def build_discriminator(self):
-        return BASIC_D(self.channels, self.discriminator_filter)
+        return BASIC_D(self.channels, self.discriminator_filter, use_sigmoid=False)
     
     def train(self, data_loader, epochs, batch_size=1, sample_interval=50, info_interval=100):
 
