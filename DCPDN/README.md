@@ -1,4 +1,4 @@
-Deep Joint Rain Detection and Removal from a Single Image
+Densely Connected Pyramid Dehazing Network
 
 arxiv.org/abs/1803.08396
 
