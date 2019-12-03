@@ -1,144 +1,144 @@
 import datetime
-from keras.layers import Input
-from keras.models import Model
+import tensorflow as tf
+from tensorflow.keras.layers import Input
+from tensorflow.keras.losses import BinaryCrossentropy
+from tensorflow.keras.models import Model
+from tensorflow.keras.optimizers import Adam
 import numpy as np
-import sys
-sys.path.append('../')
-
-from utils.sub_net import *
+from utils import *
 
 class CycleGAN():
     
-    def __init__(self, img_shape=(128, 128, 3), g_filter=32, d_filter=64, lamdba_cycle=10.0, lambda_id=1.0):
-        # Input shape
+    def __init__(self, img_shape=(256, 256, 3), ngf=32, ndf=64, lamdba_cycle=10.0, lambda_id=1.0):
+
         self.img_rows, self.img_cols, self.channels = self.img_shape = img_shape
-
-        # Calculate output shape of D (PatchGAN)
-#         patch = int(self.img_rows / 2**4)
-        patch = int(self.img_rows / 2**3)
-        self.disc_patch = (patch, patch, 1)
-
-        # Number of filters in the first layer of G and D
-        self.generator_filter, self.discriminator_filter = 32, 64
-
-        # Loss weights
+        self.ngf, self.ndf = ngf, ndf
         self.lambda_cycle, self.lambda_id = lamdba_cycle, lambda_id
 
-#         optimizer = Adam(0.0002, 0.5)
+        self.generator_g = self.build_generator()
+        self.generator_g_optimizer = Adam(2e-4, beta_1=0.5)
+        
+        self.generator_f = self.build_generator()
+        self.generator_f_optimizer = Adam(2e-4, beta_1=0.5)
+        
+        self.discriminator_x = self.build_discriminator()
+        self.discriminator_x_optimizer = Adam(2e-4, beta_1=0.5)
+        
+        self.discriminator_y = self.build_discriminator()
+        self.discriminator_y_optimizer = Adam(2e-4, beta_1=0.5)
+        
+        self.loss_obj = BinaryCrossentropy(from_logits=True)
 
-        # Build and compile the discriminators
-        self.discriminator_A = self.build_discriminator()
-        self.discriminator_A.name = 'discriminator_A'
-        self.discriminator_A.compile(loss='mse', optimizer='rmsprop', metrics=['accuracy'])
-        self.discriminator_B = self.build_discriminator()
-        self.discriminator_B.name = 'discriminator_B'
-        self.discriminator_B.compile(loss='mse', optimizer='rmsprop', metrics=['accuracy'])
+        self.disc_patch = tuple(self.discriminator_x.output.shape)[1:]
+        
+        checkpoint_path = "./checkpoints/train"
 
-        #-------------------------
-        # Construct Computational
-        #   Graph of Generators
-        #-------------------------
+        ckpt = tf.train.Checkpoint(generator_g=self.generator_g,
+                                   generator_f=self.generator_f,
+                                   discriminator_x=self.discriminator_x,
+                                   discriminator_y=self.discriminator_y,
+                                   generator_g_optimizer=self.generator_g_optimizer,
+                                   generator_f_optimizer=self.generator_f_optimizer,
+                                   discriminator_x_optimizer=self.discriminator_x_optimizer,
+                                   discriminator_y_optimizer=self.discriminator_y_optimizer)
 
-        # Build the generators
-        self.generator_A_to_B = self.build_generator()
-        self.generator_A_to_B.name = 'generator_A_to_B'
-        self.generator_B_to_A = self.build_generator()
-        self.generator_B_to_A.name = 'generator_B_to_A'
+        self.ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 
-        # Input images from both domains
-        img_A = Input(shape=self.img_shape, name='input_A')
-        img_B = Input(shape=self.img_shape, name='input_B')
-
-        # Translate images to the other domain
-        fake_B = self.generator_A_to_B(img_A)
-        fake_A = self.generator_B_to_A(img_B)
-        # Translate images back to original domain
-        reconstr_A = self.generator_B_to_A(fake_B)
-        reconstr_B = self.generator_A_to_B(fake_A)
-        # Identity mapping of images
-        img_A_id = self.generator_B_to_A(img_A)
-        img_B_id = self.generator_A_to_B(img_B)
-
-        # For the combined model we will only train the generators
-        self.discriminator_A.trainable = False
-        self.discriminator_B.trainable = False
-
-        # Discriminators determines validity of translated images
-        valid_A = self.discriminator_A(fake_A)
-        valid_B = self.discriminator_B(fake_B)
-
-        # Combined model trains generators to fool discriminators
-        self.combined = Model(inputs=[img_A, img_B],
-                              outputs=[valid_A, valid_B,
-                                       reconstr_A, reconstr_B,
-                                       img_A_id, img_B_id ])
-        self.combined.compile(loss=['mse', 'mse',
-                                    'mae', 'mae',
-                                    'mae', 'mae'],
-                            loss_weights=[1, 1,
-                                          self.lambda_cycle, self.lambda_cycle,
-                                          self.lambda_id, self.lambda_id ],
-                            optimizer='rmsprop')
+        if self.ckpt_manager.latest_checkpoint:
+            self.ckpt.restore(ckpt_manager.latest_checkpoint)
+            print ('Latest checkpoint restored!!')
+        
     
-  
     def build_generator(self):
-        return UNET_G(self.img_rows, num_generator_filter=self.generator_filter)
+        return unet(self.img_shape, self.ngf)
     
     def build_discriminator(self):
-        return BASIC_D(self.channels, self.discriminator_filter, use_sigmoid=False)
+        return basic(self.img_shape, self.ndf, use_sigmoid=False)
     
-    def train(self, data_loader, epochs, batch_size=1, sample_interval=50, info_interval=100):
+    def discriminator_loss(self, real, generated):
+        real_loss = self.loss_obj(tf.ones_like(real), real)
+        generated_loss = self.loss_obj(tf.zeros_like(generated), generated)
+        total_disc_loss = real_loss + generated_loss
+        return total_disc_loss * 0.5
+    
+    def generator_loss(self, generated):
+        return self.loss_obj(tf.ones_like(generated), generated)
+    
+    def calc_cycle_loss(self, real_image, cycled_image):
+        loss1 = tf.reduce_mean(tf.abs(real_image - cycled_image))
+        return self.lamdba_cycle * loss1
+    
+    def identity_loss(self, real_image, same_image):
+        loss = tf.reduce_mean(tf.abs(real_image - same_image))
+        return self.lamdba_cycle * 0.5 * loss
+    
+    @tf.function
+    def train_step(self, real_x, real_y):
+        with tf.GradientTape(persistent=True) as tape:
 
-        start_time = datetime.datetime.now()
+            fake_y = self.generator_g(real_x, training=True)
+            cycled_x = self.generator_f(fake_y, training=True)
 
-        # Adversarial loss ground truths
-        valid = np.ones((batch_size,) + self.disc_patch)
-        fake = np.zeros((batch_size,) + self.disc_patch)
+            fake_x = self.generator_f(real_y, training=True)
+            cycled_y = self.generator_g(fake_x, training=True)
 
+            same_x = self.generator_f(real_x, training=True)
+            same_y = self.generator_g(real_y, training=True)
+
+            disc_real_x = self.discriminator_x(real_x, training=True)
+            disc_real_y = self.discriminator_y(real_y, training=True)
+
+            disc_fake_x = self.discriminator_x(fake_x, training=True)
+            disc_fake_y = self.discriminator_y(fake_y, training=True)
+
+            gen_g_loss = self.generator_loss(disc_fake_y)
+            gen_f_loss = self.generator_loss(disc_fake_x)
+    
+            total_cycle_loss = self.calc_cycle_loss(real_x, cycled_x) + self.calc_cycle_loss(real_y, cycled_y)
+
+            total_gen_g_loss = gen_g_loss + total_cycle_loss + self.identity_loss(real_y, same_y)
+            total_gen_f_loss = gen_f_loss + total_cycle_loss + self.identity_loss(real_x, same_x)
+
+            disc_x_loss = self.discriminator_loss(disc_real_x, disc_fake_x)
+            disc_y_loss = self.discriminator_loss(disc_real_y, disc_fake_y)
+
+        generator_g_gradients = tape.gradient(total_gen_g_loss, self.generator_g.trainable_variables)
+        generator_f_gradients = tape.gradient(total_gen_f_loss, self.generator_f.trainable_variables)
+        discriminator_x_gradients = tape.gradient(disc_x_loss, self.discriminator_x.trainable_variables)
+        discriminator_y_gradients = tape.gradient(disc_y_loss, self.discriminator_y.trainable_variables)
+
+        generator_g_optimizer.apply_gradients(zip(generator_g_gradients, self.generator_g.trainable_variables))
+        generator_f_optimizer.apply_gradients(zip(generator_f_gradients, self.generator_f.trainable_variables))
+        discriminator_x_optimizer.apply_gradients(zip(discriminator_x_gradients, self.discriminator_x.trainable_variables))
+        discriminator_y_optimizer.apply_gradients(zip(discriminator_y_gradients, self.discriminator_y.trainable_variables))
+        return disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss
+    
+    def train(self, epochs, datasetX, datasetY, batch_size, loss_interval):
+        
         for epoch in range(epochs):
-            for batch_i, (imgs_A, imgs_B) in enumerate(data_loader.load_batch(batch_size)):
+            start = datetime.datetime.now()
 
-                # ----------------------
-                #  Train Discriminators
-                # ----------------------
-
-                # Translate images to opposite domain
-                fake_B = self.generator_A_to_B.predict(imgs_A)
-                fake_A = self.generator_B_to_A.predict(imgs_B)
-
-                # Train the discriminators (original images = real / translated = Fake)
-                dA_loss_real = self.discriminator_A.train_on_batch(imgs_A, valid)
-                dA_loss_fake = self.discriminator_A.train_on_batch(fake_A, fake)
-                dA_loss = 0.5 * np.add(dA_loss_real, dA_loss_fake)
-
-                dB_loss_real = self.discriminator_B.train_on_batch(imgs_B, valid)
-                dB_loss_fake = self.discriminator_B.train_on_batch(fake_B, fake)
-                dB_loss = 0.5 * np.add(dB_loss_real, dB_loss_fake)
-
-                # Total disciminator loss
-                d_loss = 0.5 * np.add(dA_loss, dB_loss)
+            n = 0
+            print('epoch {0}/{1}'.format(epoch + 1, epochs,))
+            for image_x, image_y in tf.data.Dataset.zip((datasetX, datasetY)).batch(batch_size):
+                disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss = train_step(image_x, image_y)
+                if n % loss_interval == 0:
+                    print ('Loss: Dx: {0} Dy: {1} G: {2} F: {3}'.format(disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss))
+                n += 1
+            
+            if (epoch + 1) % 5 == 0:
+                ckpt_save_path = self.ckpt_manager.save()
+                print ('Saving checkpoint for epoch {} at {}'.format(epoch+1,
+                                                                     ckpt_save_path))
 
 
-                # ------------------
-                #  Train Generators
-                # ------------------
-
-                # Train the generators
-                g_loss = self.combined.train_on_batch([imgs_A, imgs_B],
-                                                      [valid, valid,
-                                                       imgs_A, imgs_B,
-                                                       imgs_A, imgs_B])
-
-
-                # Plot the progress
-                if batch_i % info_interval == data_loader.n_batches % info_interval:
-                    elapsed_time = datetime.datetime.now() - start_time
-                    print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f, acc: %3d%%] [G loss: %05f, adv: %05f, recon: %05f, id: %05f] time: %s "
-                           % (epoch, epochs,
-                              batch_i, data_loader.n_batches,
-                              d_loss[0], 100*d_loss[1],
-                              g_loss[0],
-                              np.mean(g_loss[1:3]),
-                              np.mean(g_loss[3:5]),
-                              np.mean(g_loss[5:6]),
-                              elapsed_time))
+            print ('Time taken for epoch {} of totoal epoch {} is {}\n'.format(
+                epoch + 1,
+                epochs,
+                datetime.datetime.now() - start_time))
+        
+        ckpt_save_path = self.ckpt_manager.save()
+        print ('Saving checkpoint for epoch {} at {}'.format(
+            epoch+1,
+            ckpt_save_path))
+        print ('Time taken is {}\n'.format(datetime.datetime.now() - start_time))

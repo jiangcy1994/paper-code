@@ -1,11 +1,12 @@
-import cv2
-import numpy as np
+import tensorflow as tf
 
-def load_img(self, path, img_shape, interpolation=cv2.INTER_LINEAR):
-    img = self.imread(path)
-    img = cv2.imresize(img, img_shape, interpolation=interpolation)
-    img = img / 127.5 - 1.
-    return img[np.newaxis, :, :, :]
+def preprocess_image(image, img_shape):
+    image = tf.image.decode_jpeg(image, channels=3)
+    image = tf.image.resize(image, [192, 192])
+    image /= 255.0
 
-def imread(self, path):
-    return cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB).astype(np.float)
+    return image
+
+def load_and_preprocess_image(path, img_shape):
+    image = tf.io.read_file(path)
+    return preprocess_image(image, img_shape)

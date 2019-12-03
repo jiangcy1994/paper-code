@@ -4,6 +4,8 @@ from functools import partial
 from tensorflow.keras.layers import Activation, Conv2D, Input, LeakyReLU
 from tensorflow.keras.models import Model
 
+__all__ = ['basic', 'imageGAN', 'n_layers', 'pixelGAN']
+
 LayerBlock = partial(unet_block, kernel_size=4,
                      transposed=False, bn=True, relu=False)
 
@@ -14,18 +16,17 @@ def n_layers(img_shape, ndf, n_layers, use_sigmoid):
     x = Conv2D(ndf, kernel_size=4, strides=2,
                padding='same', name='layer0/conv')(img_input)
 
-    for i in range(1, max_layers + 1):
-        filters = ndf * min(2 ** layer, 8)
-        if i == max_layers:
+    for i in range(1, n_layers + 1):
+        filters = ndf * min(2 ** i, 8)
+        if i == n_layers:
             x = LayerBlock(filters, strides=1,
-                           name='layer{0}'.format(layer))(x)
+                           name='layer{0}'.format(i))(x)
         else:
             x = LayerBlock(filters, strides=2,
-                           name='layer{0}'.format(layer))(x)
-
-    x = LeakyReLU(alpha=0.2)(x)
+                           name='layer{0}'.format(i))(x)
 
     # final layer
+    x = LeakyReLU(alpha=0.2)(x)
     x = Conv2D(1, kernel_size=4, strides=1,
                name='layerfinal', padding='same')(x)
     if use_sigmoid:
@@ -34,7 +35,7 @@ def n_layers(img_shape, ndf, n_layers, use_sigmoid):
 
 
 def basic(img_shape, ndf, use_sigmoid):
-    return _n_layers(img_shape, ndf, 3, use_sigmoid)
+    return n_layers(img_shape, ndf, 3, use_sigmoid)
 
 
 def imageGAN(img_shape, ndf, use_sigmoid):
@@ -63,7 +64,7 @@ def imageGAN(img_shape, ndf, use_sigmoid):
             Activation('sigmoid')
         )
 
-    output = layer(img_input)
+    output = layers(img_input)
     return Model(inputs=[img_input], outputs=[output])
 
 
@@ -76,7 +77,7 @@ def pixelGAN(img_shape, ndf, use_sigmoid):
                    bn=False, relu=False),
         unet_block(ndf * 2, 1, 1, 'layer2',
                    transposed=False, bn=True, relu=False),
-        Conv2D(1, kernel_size=4, strides=2, padding='same', name='layer7')
+        Conv2D(1, kernel_size=4, strides=2, padding='same', name='layer3')
     )
 
     if use_sigmoid:
@@ -85,5 +86,5 @@ def pixelGAN(img_shape, ndf, use_sigmoid):
             Activation('sigmoid')
         )
 
-    output = layer(img_input)
+    output = layers(img_input)
     return Model(inputs=[img_input], outputs=[output])
