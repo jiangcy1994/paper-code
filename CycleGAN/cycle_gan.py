@@ -67,11 +67,11 @@ class CycleGAN():
 
     def calc_cycle_loss(self, real_image, cycled_image):
         loss1 = tf.reduce_mean(tf.abs(real_image - cycled_image))
-        return self.lamdba_cycle * loss1
+        return self.lambda_cycle * loss1
 
     def identity_loss(self, real_image, same_image):
         loss = tf.reduce_mean(tf.abs(real_image - same_image))
-        return self.lamdba_cycle * 0.5 * loss
+        return self.lambda_cycle * 0.5 * loss
 
     @tf.function
     def train_step(self, real_x, real_y):
@@ -115,13 +115,13 @@ class CycleGAN():
         discriminator_y_gradients = tape.gradient(
             disc_y_loss, self.discriminator_y.trainable_variables)
 
-        generator_g_optimizer.apply_gradients(
+        self.generator_g_optimizer.apply_gradients(
             zip(generator_g_gradients, self.generator_g.trainable_variables))
-        generator_f_optimizer.apply_gradients(
+        self.generator_f_optimizer.apply_gradients(
             zip(generator_f_gradients, self.generator_f.trainable_variables))
-        discriminator_x_optimizer.apply_gradients(
+        self.discriminator_x_optimizer.apply_gradients(
             zip(discriminator_x_gradients, self.discriminator_x.trainable_variables))
-        discriminator_y_optimizer.apply_gradients(
+        self.discriminator_y_optimizer.apply_gradients(
             zip(discriminator_y_gradients, self.discriminator_y.trainable_variables))
         return disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss
 
@@ -133,7 +133,7 @@ class CycleGAN():
             n = 0
             print('epoch {0}/{1}'.format(epoch + 1, epochs,))
             for image_x, image_y in tf.data.Dataset.zip((datasetX, datasetY)).batch(batch_size):
-                disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss = train_step(
+                disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss = self.train_step(
                     image_x, image_y)
                 if n % loss_interval == 0:
                     print('Loss: Dx: {0} Dy: {1} G: {2} F: {3}'.format(

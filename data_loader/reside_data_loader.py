@@ -1,4 +1,4 @@
-from data_loader import DataLoader
+from .data_loader import DataLoader
 import tensorflow as tf
 import numpy as np
 
@@ -8,8 +8,8 @@ class RESIDEOTSDataLoader(DataLoader):
                  img_shape=(256, 256),
                  clear_path='D:DataSet/RESIDE/OTS_ALPHA/clear_sl/',
                  haze_path='D:DataSet/RESIDE/OTS_ALPHA/haze/',
-                 train_path='RESIDE_OTS_train.txt',
-                 test_path='RESIDE_OTS_test.txt'):
+                 train_path='../data_loader/RESIDE_OTS_train.txt',
+                 test_path='../data_loader/RESIDE_OTS_test.txt'):
         super(RESIDEOTSDataLoader, self).__init__(img_shape)
         self.dataset_name = self.__class__
         self.clear_path, self.haze_path = clear_path, haze_path
