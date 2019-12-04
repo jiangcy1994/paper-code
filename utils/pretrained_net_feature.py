@@ -1,4 +1,4 @@
-from keras.models import Model
+from tensorflow.keras.models import Model
 
 __all__ = ['pretrained_net_feature']
 
@@ -9,8 +9,8 @@ def pretrained_net_feature(pretrained_net, output_layers, input_shape=(128, 128,
         output_layers = [output_layers]
         
     pretrained_model = pretrained_net(include_top=False, 
-                                          weights='imagenet', 
-                                          input_shape=input_shape)
+                                      weights='imagenet', 
+                                      input_shape=input_shape)
     layer_names = [layer.name for layer in pretrained_model.layers]
     output_list = []
     

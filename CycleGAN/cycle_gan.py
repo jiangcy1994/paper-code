@@ -51,7 +51,7 @@ class CycleGAN():
             print('Latest checkpoint restored!!')
 
     def build_generator(self):
-        return unet(self.img_shape, self.ngf)
+        return resnet_9blocks(self.img_shape, self.ngf)
 
     def build_discriminator(self):
         return basic(self.img_shape, self.ndf, use_sigmoid=False)
