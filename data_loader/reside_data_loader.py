@@ -8,7 +8,7 @@ class RESIDEOTSDataLoader(DataLoader):
     def __init__(self,
                  img_shape=(256, 256),
                  clear_path='D:DataSet/RESIDE/OTS_ALPHA/clear_sl/',
-                 depth_path='D:DataSet/RESIDE/OTS_ALPHA/depth/'
+                 depth_path='D:DataSet/RESIDE/OTS_ALPHA/depth/',
                  haze_path='D:DataSet/RESIDE/OTS_ALPHA/haze/',
                  train_path='../data_loader/RESIDE_OTS_train.txt',
                  test_path='../data_loader/RESIDE_OTS_test.txt'):
