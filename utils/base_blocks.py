@@ -1,9 +1,9 @@
 from compose import *
 from functools import partial
-from tensorflow.keras.layers import AvgPool2D, BatchNormalization, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
+from tensorflow.keras.layers import AvgPool2D, BatchNormalization, Concatenate, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
 
 __all__ = ['bottleneck_block', 'transition_block',
-           'sampling_block', 'unet_block']
+           'sampling_block', 'unet_block', 'skip_concat']
 
 
 def bottleneck_block(out_filters, kernal_size_2, dropRate=0.0, name=None):
@@ -124,3 +124,7 @@ def unet_block(filters, kernel_size, strides, name, transposed=False, bn=False, 
         )
 
     return layers
+
+
+def skip_concat(f, name=None):
+    return lambda x: Concatenate(name=name)([x, f(x)])

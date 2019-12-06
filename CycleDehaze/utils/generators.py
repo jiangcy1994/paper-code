@@ -1,4 +1,5 @@
 from base_blocks import *
+from base_net_layers import *
 from compose import *
 from functools import partial
 from layers import *
@@ -13,82 +14,24 @@ EncoderBlock = partial(_base_unet_block, transposed=False, relu=False)
 DecoderBlock = partial(_base_unet_block, transposed=True, relu=True)
 
 
-def encoder_decoder(img_shape, ngf, name=None):
+def autoencoder(img_shape, ngf, include_top=True, name=None):
 
-    if name is not None:
-        name = name + '/'
+    layer_num = int(log2(min(img_shape[:2])))
+    layers = autoencoder_layers(
+        layer_num, img_shape[-1], ngf, include_top=include_top, name='autoencoder')
+    img_input = Input(img_shape, name=name + 'img_input' if name else None)
 
-    img_input = Input(img_shape, name=name + 'input' if name else None)
-
-    output = compose(
-        Conv2D(ngf, kernel_size=4, strides=2, padding='same',
-               name=name + 'encoder_block1/conv' if name else None),
-        EncoderBlock(ngf * 2, name=name + 'encoder_block2' if name else None),
-        EncoderBlock(ngf * 4, name=name + 'encoder_block3' if name else None),
-        EncoderBlock(ngf * 8, name=name + 'encoder_block4' if name else None),
-        EncoderBlock(ngf * 8, name=name + 'encoder_block5' if name else None),
-        EncoderBlock(ngf * 8, name=name + 'encoder_block6' if name else None),
-        EncoderBlock(ngf * 8, name=name + 'encoder_block7' if name else None),
-        EncoderBlock(ngf * 8, name=name + 'encoder_block8' if name else None),
-        DecoderBlock(ngf * 8, name=name +
-                     'decoder_block1' if name else None, dropout=True),
-        DecoderBlock(ngf * 8, name=name +
-                     'decoder_block2' if name else None, dropout=True),
-        DecoderBlock(ngf * 8, name=name +
-                     'decoder_block3' if name else None, dropout=True),
-        DecoderBlock(ngf * 8, name=name + 'decoder_block4' if name else None),
-        DecoderBlock(ngf * 4, name=name + 'decoder_block5' if name else None),
-        DecoderBlock(ngf * 2, name=name + 'decoder_block6' if name else None),
-        DecoderBlock(ngf * 1, name=name + 'decoder_block7' if name else None),
-        ReLU(name=name + 'decoder_block8/relu' if name else None),
-        Conv2DTranspose(img_shape[-1], kernel_size=4, strides=2, padding='same',
-                        name=name + 'decoder_block8/conv' if name else None),
-        Activation('tanh', name=name + 'output_block/tanh' if name else None)
-    )(img_input)
-
-    return Model(inputs=[img_input], outputs=[output])
+    return Model(inputs=[img_input], outputs=[layers(img_input)])
 
 
 def unet(img_shape, ngf, name=None):
 
-    outs = []
-    layer_num = int(log2(max(img_shape[:2])))
+    layer_num = int(log2(min(img_shape[:2])))
+    layers = unet_layers(
+        layer_num, img_shape[-1], ngf, include_top=True, name='unet')
+    img_input = Input(img_shape, name=name + 'img_input' if name else None)
 
-    if name is not None:
-        name = name + '/'
-
-    img_input = Input(img_shape, name=name + 'input' if name else None)
-
-    x = Conv2D(ngf, kernel_size=4, strides=2, padding='same', use_bias=False,
-               name='encoder_block1/conv' if name else None)(img_input)
-    outs.append(x)
-
-    for i in range(1, layer_num):
-        multiplier = min(2 ** i, 8)
-        x = EncoderBlock(ngf * multiplier,
-                         name=name + 'encoder_block{0}'.format(i + 1) if name else None)(x)
-        outs.append(x)
-
-    for i in range(layer_num - 1):
-        multiplier = min(2 ** (layer_num - i - 2), 8)
-        if i < 3:
-            x = DecoderBlock(
-                ngf * multiplier, dropout=True,
-                name=name + 'decoder_block{0}'.format(i + 1) if name else None)(x)
-        else:
-            x = DecoderBlock(
-                ngf * multiplier,
-                name=name + 'decoder_block{0}'.format(i + 1) if name else None)(x)
-        x = Concatenate()([x, outs[-(i + 2)]])
-
-    output = compose(
-        ReLU(name=name + 'decoder_block8/relu' if name else None),
-        Conv2DTranspose(img_shape[-1], kernel_size=4, strides=2, padding='same',
-                        name=name + 'decoder_block8/conv' if name else None),
-        Activation('tanh', name=name + 'output_block/tanh' if name else None)
-    )(x)
-
-    return Model(inputs=[img_input], outputs=[output])
+    return Model(inputs=[img_input], outputs=[layers(img_input)])
 
 
 def build_conv_block(dim, padding_type, name=None):
