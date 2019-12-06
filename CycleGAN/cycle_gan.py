@@ -47,7 +47,7 @@ class CycleGAN():
             ckpt, checkpoint_path, max_to_keep=5)
 
         if self.ckpt_manager.latest_checkpoint:
-            self.ckpt.restore(ckpt_manager.latest_checkpoint)
+            ckpt.restore(self.ckpt_manager.latest_checkpoint)
             print('Latest checkpoint restored!!')
 
     def build_generator(self):
@@ -136,22 +136,21 @@ class CycleGAN():
                 disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss = self.train_step(
                     image_x, image_y)
                 if n % loss_interval == 0:
-                    print('Loss: Dx: {0} Dy: {1} G: {2} F: {3}'.format(
-                        disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss))
+                    print('Batch:{0} | Loss: | Dx: {1} Dy: {2} | G: {3} F: {4}'.format(
+                        n, disc_x_loss, disc_y_loss, total_gen_g_loss, total_gen_f_loss))
                 n += 1
 
-            if (epoch + 1) % 5 == 0:
-                ckpt_save_path = self.ckpt_manager.save()
-                print('Saving checkpoint for epoch {} at {}'.format(epoch+1,
-                                                                    ckpt_save_path))
+            ckpt_save_path = self.ckpt_manager.save()
+            print('Saving checkpoint for epoch {} at {}'.format(epoch+1,
+                                                                ckpt_save_path))
 
             print('Time taken for epoch {} of totoal epoch {} is {}\n'.format(
                 epoch + 1,
                 epochs,
-                datetime.datetime.now() - start_time))
+                datetime.datetime.now() - start))
 
         ckpt_save_path = self.ckpt_manager.save()
         print('Saving checkpoint for epoch {} at {}'.format(
             epoch+1,
             ckpt_save_path))
-        print('Time taken is {}\n'.format(datetime.datetime.now() - start_time))
+        print('Time taken is {}\n'.format(datetime.datetime.now() - start))

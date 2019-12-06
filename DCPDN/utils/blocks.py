@@ -1,5 +1,5 @@
 from base_blocks import *
-from keras.layers import AvgPool2D, BatchNormalization, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
+from tensorflow.keras.layers import AvgPool2D, BatchNormalization, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
 from functools import partial
 
 __all__ = ['BottleneckBlock', 'TransitionBlock', 'Sampling_Block', 'UNetBlock']

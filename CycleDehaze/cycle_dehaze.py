@@ -50,7 +50,7 @@ class CycleDehaze():
             ckpt, checkpoint_path, max_to_keep=5)
 
         if self.ckpt_manager.latest_checkpoint:
-            self.ckpt.restore(ckpt_manager.latest_checkpoint)
+            ckpt.restore(self.ckpt_manager.latest_checkpoint)
             print('Latest checkpoint restored!!')
 
     def build_generator(self):
@@ -165,10 +165,10 @@ class CycleDehaze():
             print('Time taken for epoch {} of totoal epoch {} is {}\n'.format(
                 epoch + 1,
                 epochs,
-                datetime.datetime.now() - start_time))
+                datetime.datetime.now() - start))
 
         ckpt_save_path = self.ckpt_manager.save()
         print('Saving checkpoint for epoch {} at {}'.format(
             epoch+1,
             ckpt_save_path))
-        print('Time taken is {}\n'.format(datetime.datetime.now() - start_time))
+        print('Time taken is {}\n'.format(datetime.datetime.now() - start))
