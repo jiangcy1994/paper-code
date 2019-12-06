@@ -1,179 +1,149 @@
 import datetime
-import gc
-from keras import backend as K
-from keras.layers import Concatenate, Input, Lambda
-from keras.models import Model
+import tensorflow as tf
+from tensorflow.keras.losses import BinaryCrossentropy
+from tensorflow.keras.optimizers import Adam
 import numpy as np
-
 from utils import *
 
-__all__ = ['DCPDN']
 
-class DCPDN:
-    
-    def __init__(self, img_shape=(256, 256, 3), lambda_img=1, lambda_gan=0.35):
-        self.img_shape = img_shape
-        self.lambda_img = lambda_img
-        self.lambda_gan = lambda_gan
-        self.vgg16_feature = vgg16_feature_net(img_shape)
-        self.vgg16_feature.name = 'vgg16_feature'
-        
-        label_real = np.ones(self.img_shape)
-        label_fake = np.zeros(self.img_shape) 
-        
-        img_input = Input(self.img_shape)
-        target_input = Input(self.img_shape)
-        trans_input = Input(self.img_shape)
-        ato_input = Input(self.img_shape)
-        
-        self.discriminator = self.build_discriminator()
-        self.discriminator.name = 'discriminator'
-        self.discriminator.compile(loss=['binary_crossentropy'], optimizer='rmsprop')
-        self.disc_patch = self.discriminator.output_shape[1:]
-        
+class DCPDN():
+
+    def __init__(self, img_shape=(256, 256, 3), lamdba_el2=1.0, lambda_eg=0.5, lambda_ef=0.8, lambda_gan=0.35):
+
+        self.img_rows, self.img_cols, self.channels = self.img_shape = img_shape
+        self.lamdba_el2, self.lambda_eg, self.lambda_ef, self.lambda_gan = lamdba_el2, lambda_eg, lambda_ef, lambda_gan
+
         self.generator = self.build_generator()
-        self.generator.name = 'generator'
-        
-        x_hat, trans_hat, atp_hat, dehaze21 = self.generator(img_input)
-        fake_output = self.discriminator([trans_hat, x_hat])
-        
-        self.get_gradient_h = Lambda(function=lambda x:K.abs(x[:, :, :-1] - x[:, :, 1:]), name='get_gradient_h')
-        self.get_gradient_v = Lambda(function=lambda x:K.abs(x[:, :-1] - x[:, 1:]), name='get_gradient_v')
-        
-        gradient_h_hat = self.get_gradient_h(trans_hat)
-        gradient_v_hat = self.get_gradient_v(trans_hat)
-        features_content0, features_content1 = self.vgg16_feature(trans_hat)
-        
-        self.combined = Model(inputs=[img_input, target_input, trans_input, ato_input],
-                              outputs=[x_hat, # L_L1 for overall
-                                       trans_hat, # L1 for transamission map
-                                       gradient_h_hat, gradient_v_hat, # gradient loss for transamission map
-                                       features_content0, features_content1, # feature loss for transmission map
-                                       atp_hat, # L1 for atop-map
-                                       fake_output # gan_loss for the joint discriminator
-                                      ])
-        self.combined.compile(loss=['mae', 
-                                    'mae',
-                                    'mae', 'mae',
-                                    'mae', 'mae',
-                                    'mae',
-                                    'binary_crossentropy'
-                                   ],
-                              loss_weights=[self.lambda_img,
-                                            self.lambda_img,
-                                            2 * self.lambda_img, 2 * self.lambda_img,
-                                            0.8 * self.lambda_img, 0.8 * self.lambda_img,
-                                            self.lambda_img,
-                                            self.lambda_gan
-                                           ],
-                              optimizer='rmsprop'
-                             )
-    
+        self.generator_optimizer = Adam(2e-3, beta_1=0.5)
+
+        self.discriminator = self.build_discriminator()
+        self.discriminator_optimizer = Adam(2e-3, beta_1=0.5)
+
+        self.vgg16_extract_feature = vgg16_feature_net(img_shape)
+        self.vgg16_extract_feature.trainable = False
+
+        self.loss_obj = BinaryCrossentropy(from_logits=True)
+
+        checkpoint_path = "./checkpoints/train"
+
+        ckpt = tf.train.Checkpoint(generator=self.generator,
+                                   discriminator=self.discriminator,
+                                   generator_optimizer=self.generator_optimizer,
+                                   discriminator_optimizer=self.discriminator_optimizer)
+
+        self.ckpt_manager = tf.train.CheckpointManager(
+            ckpt, checkpoint_path, max_to_keep=5)
+
+        if self.ckpt_manager.latest_checkpoint:
+            ckpt.restore(self.ckpt_manager.latest_checkpoint)
+            print('Latest checkpoint restored!!')
+
     def build_generator(self):
         return Dehaze(self.img_shape)
-    
+
     def build_discriminator(self):
-        input0 = Input(self.img_shape)
-        input1 = Input(self.img_shape)
-        inp = Concatenate()([input0, input1])
-        D_model = D()
-        model = Model(inputs=[input0, input1], outputs=[D_model(inp)])
-        return model
-    
-    def train(self, data_loader, epochs, batch_size=1, sample_interval=50):
+        return D(self.img_shape)
 
-        start_time = datetime.datetime.now()
-        d_loss = 0
-        g_loss = []
+    def edge_loss(self, real_trans, generated_trans):
+        '''$L_{E}$'''
 
-        # Adversarial loss ground truths
-        valid = np.ones((batch_size,) + self.disc_patch)
-        fake = np.zeros((batch_size,) + self.disc_patch)
-        
+        # $L_{E,l_2}$
+        l2_loss = tf.reduce_mean(tf.square(real_trans - generated_trans))
+
+        # $L_{E,g}$
+        def get_gradient_h(x): return K.abs(x[:, :, :-1] - x[:, :, 1:])
+        def get_gradient_v(x): return K.abs(x[:, :-1] - x[:, 1:])
+        lg_loss = tf.reduce_mean(tf.square(get_gradient_h(real_trans) - get_gradient_h(generated_trans))) + \
+            tf.reduce_mean(tf.square(get_gradient_v(
+                real_trans) - get_gradient_v(generated_trans)))
+
+        # $L_{E,f}$
+        real_trans_feature = self.vgg16_extract_feature(real_trans)
+        generated_trans_feature = self.vgg16_extract_feature(generated_trans)
+
+        lf_loss = tf.reduce_mean(tf.square(real_trans_feature[0] - generated_trans_feature[0])) + tf.reduce_mean(
+            tf.square(real_trans_feature[1] - generated_trans_feature[1]))
+        return self.lamdba_el2 * l2_loss + self.lambda_eg * lg_loss + self.lambda_ef * lf_loss
+
+    def atoms_loss(self, real_atoms, generated_atoms):
+        '''$L_{A}$'''
+        return tf.reduce_mean(tf.square(real_atoms - generated_atoms))
+
+    def dehaze_loss(self, real_img, generated_img):
+        '''$L_{D}$'''
+        return tf.reduce_mean(tf.square(real_img - generated_img))
+
+    def joint_loss(generated_img_label):
+        '''$L_{j}$'''
+        j_loss = self.loss_obj(tf.ones_like(
+            generated_img_label), generated_img_label)
+        return self.lambda_gan * j_loss
+
+    def discriminator_loss(self, real, generated):
+        real_loss = self.loss_obj(tf.ones_like(real), real)
+        generated_loss = self.loss_obj(tf.zeros_like(generated), generated)
+        total_disc_loss = real_loss + generated_loss
+        return total_disc_loss * 0.5
+
+    @tf.function
+    def train_step(self, image, target, trans, atmos):
+        with tf.GradientTape(persistent=True) as tape:
+
+            fake_target, fake_trans, fake_atmos = self.generator(
+                image, training=True)
+
+            disc_real = self.discriminator([trans, target], training=True)
+            disc_fake = self.discriminator(
+                [fake_trans, fake_target], training=True)
+
+            gen_g_loss = self.generator_loss(disc_fake_y)
+            gen_f_loss = self.generator_loss(disc_fake_x)
+
+            disc_loss = self.discriminator_loss(disc_real, disc_fake)
+
+            gen_loss_E = self.edge_loss(trans, fake_trans)
+            gen_loss_A = self.atoms_loss(atmos, fake_atmos)
+            gen_loss_D = self.dehaze_loss(target, fake_target)
+            gen_loss_j = self.joint_loss(disc_fake)
+            total_gen_loss = gen_loss_E + gen_loss_A + gen_loss_D + gen_loss_j
+
+        generator_gradients = tape.gradient(
+            total_gen_loss, self.generator.trainable_variables)
+        discriminator_gradients = tape.gradient(
+            disc_loss, self.discriminator.trainable_variables)
+
+        self.generator_optimizer.apply_gradients(
+            zip(generator_gradients, self.generator.trainable_variables))
+        self.discriminator_optimizer.apply_gradients(
+            zip(discriminator_gradients, self.discriminator.trainable_variables))
+        return disc_loss, total_gen_loss
+
+    def train(self, epochs, dataset_image, dataset_target, dataset_trans, dataset_atmos, batch_size, loss_interval):
+
         for epoch in range(epochs):
-            for batch_i, (img_input, target_input, trans_input, ato_input) in enumerate(data_loader.load_batch(batch_size)):
+            start = datetime.datetime.now()
 
-                x_hat, trans_hat, atp_hat, dehaze21 = self.generator.predict(img_input)
-                # ----------------------
-                #  Train Discriminators
-                # ----------------------
-#                 self.discriminator.trainable = True
-                d_loss_real = self.discriminator.train_on_batch(
-                    [trans_input, target_input], 
-                    valid
-                )
-                d_loss_fake = self.discriminator.train_on_batch(
-                    [trans_hat, x_hat],
-                    fake
-                )
-                d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
-                
-                # ------------------
-                #  Train Generators
-                # ------------------
-#                 self.discriminator.trainable = False
-#                 gradient_h = self.get_gradient_h(trans_input_tensor)
-#                 gradient_v = self.get_gradient_v(trans_input_tensor)
-                gradient_h = self.get_gradient_h.call(trans_input)
-                gradient_v = self.get_gradient_v.call(trans_input)
-                features_content0 ,features_content1 = self.vgg16_feature.predict(trans_input)
-                
-                # Train the generators
-                g_loss = self.combined.train_on_batch([img_input, target_input, trans_input, ato_input],
-                                                      [img_input,
-                                                       trans_input,
-                                                       gradient_h, gradient_v,
-                                                       features_content0, features_content1,
-                                                       ato_input,
-                                                       valid
-                                                      ])
-                
-                if batch_i % sample_interval == 0:
-                    elapsed_time = datetime.datetime.now() - start_time
+            n = 0
+            print('epoch {0}/{1}'.format(epoch + 1, epochs))
+            for image, target, trans, atmos in tf.data.Dataset.zip((dataset_image, dataset_target, dataset_trans, dataset_atmos)).batch(batch_size):
+                disc_loss, total_gen_loss = self.train_step(
+                    image, target, trans, atmos)
+                if n % loss_interval == 0:
+                    print('Batch:{0} | Loss: | D: {1} | G: {2}'.format(
+                        n, disc_loss, total_gen_loss))
+                n += 1
 
-                    # Plot the progress
-                    print ("[Epoch %d/%d] [Batch %d/%d] [D loss: %f] [G loss: %05f, Lt: %05f, La: %05f, Ld: %05f] time: %s " %
-                           (epoch, epochs,
-                            batch_i, data_loader.n_batches,
-                            d_loss,
-                            g_loss[7],
-                            np.sum(g_loss[1:6]),
-                            g_loss[6],
-                            g_loss[0],
-                            elapsed_time))
-        
-        elapsed_time = datetime.datetime.now() - start_time
-        # Print Result After Train
-        print("[D loss: %f] [G loss: %05f, Lt: %05f, La: %05f, Ld: %05f] time: %s " %
-              (d_loss,
-               g_loss[7],
-               np.sum(g_loss[1:6]),
-               g_loss[6],
-               g_loss[0],
-               elapsed_time))
+            ckpt_save_path = self.ckpt_manager.save()
+            print('Saving checkpoint for epoch {} at {}'.format(epoch+1,
+                                                                ckpt_save_path))
 
-    def predict(self, img_input):
-        img_output, _ = self.generator.predict([img_input])
-        return img_output
-    
-    def save_model(self, dir_name='model'):
-        if not os.path.exists(dir_name) and not os.path.isdir(dir_name):
-            os.mkdir(dir_name)
-            
-        self.discriminator.save_weights(dir_name + '/dcpdn_discriminator.hdf5')
-        self.generator.save_weights(dir_name + '/dcpdn_generator.hdf5')
-        
-    def load_model(self, dir_name='model'):
-        discriminator_name = dir_name + '/dcpdn_discriminator.hdf5'
-        generator_name = dir_name + '/dcpdn_generator.hdf5'
-        
-        if os.path.exists(discriminator_name) and os.path.isfile(discriminator_name):
-            self.discriminator.load_model(discriminator_name)
-        else:
-            print('no discriminator model weights file in {0}'.format(discriminator_name))
+            print('Time taken for epoch {} of totoal epoch {} is {}\n'.format(
+                epoch + 1,
+                epochs,
+                datetime.datetime.now() - start))
 
-        if os.path.exists(generator_name) and os.path.isfile(generator_name):
-            self.generator.load_model(generator_name)
-        else:
-            print('no discriminator model weights file in {0}'.format(generator_name))
-    
+        ckpt_save_path = self.ckpt_manager.save()
+        print('Saving checkpoint for epoch {} at {}'.format(
+            epoch+1,
+            ckpt_save_path))
+        print('Time taken is {}\n'.format(datetime.datetime.now() - start))

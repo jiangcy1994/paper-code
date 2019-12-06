@@ -1,6 +1,6 @@
 import sys
 sys.path.append('../utils/')
 
-from .D import *
-from .Dehaze import *
+from .discriminator import *
+from .generator import *
 from .vgg16_feature import *
