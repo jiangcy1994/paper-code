@@ -18,11 +18,11 @@ class RESIDEOTSDataLoader(DataLoader):
         self.train_path, self.test_path = train_path, test_path
         self.img_type = '.jpg'
 
-    def _get_atmos_ds():
+    def _get_atmos_ds(ds):
         atmos_ds = ds.map(map_func=lambda x: x.split('_')[1])
         return trans_ds
 
-    def _get_trans_ds():
+    def _get_trans_ds(ds):
         beta_ds = ds.map(map_func=lambda x: x.split('_')[2])
         depth_path_ds = ds.map(
             map_func=lambda x: self.depth_path + x.split('_')[0] + '.mat')
@@ -38,7 +38,13 @@ class RESIDEOTSDataLoader(DataLoader):
             np.loadtxt(self.train_path, dtype=str))
 
         if include_trans_atmos:
-            pass
+            haze_train_img_ds = self._get_img_ds(basename_ds, self.haze_path)
+            clear_train_img_ds = self._get_img_ds(basename_ds, self.clear_path)
+            trans_ds = self._get_trans_ds(basename_ds)
+            atmos_ds = self._get_atmos_ds(basename_ds)
+            
+            return haze_train_img_ds, clear_train_img_ds, trans_ds, atmos_ds
+            
         else:
             haze_train_img_ds = self._get_img_ds(basename_ds, self.haze_path)
             clear_train_img_ds = self._get_img_ds(basename_ds, self.clear_path)
