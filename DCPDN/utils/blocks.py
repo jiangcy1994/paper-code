@@ -17,6 +17,6 @@ Sampling_Block = partial(sampling_block, ds_layer=DownSamplingLayer,
                          us_layer=UpSamplingLayer, kernel_size=3)
 
 Concat_Samping_Block = partial(concat_samping_block, ds_layer=DownSamplingLayer,
-                         us_layer=UpSamplingLayer, kernel_size=3)
+                               us_layer=UpSamplingLayer, kernel_size=3)
 
 UNetBlock = partial(unet_block, kernel_size=4, strides=2)
