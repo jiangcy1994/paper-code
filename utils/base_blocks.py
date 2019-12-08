@@ -3,7 +3,7 @@ from functools import partial
 from tensorflow.keras.layers import AvgPool2D, BatchNormalization, Concatenate, Conv2D, Conv2DTranspose, Dropout, LeakyReLU, ReLU, UpSampling2D
 
 __all__ = ['bottleneck_block', 'transition_block',
-           'sampling_block', 'unet_block', 'skip_concat']
+           'sampling_block', 'concat_samping_block', 'unet_block', 'skip_concat']
 
 
 def bottleneck_block(out_filters, kernal_size_2, dropRate=0.0, name=None):
@@ -82,6 +82,19 @@ def sampling_block(pool, ds_layer, us_layer, kernel_size=1, name=None):
     )
 
     return layers
+
+
+def concat_samping_block(pool_list, ds_layer, us_layer, kernel_size=1, name=None):
+
+    if name is not None:
+        name = name + '/'
+
+    return lambda x: Concatenate(name=name + 'concat' if name else None)(
+        [sampling_block(pool, ds_layer, us_layer, kernel_size=kernel_size,
+                        name=name + 'sample_{0}'.format(pool) if name else None)(x)
+         for pool in pool_list] +
+        [x]
+    )
 
 
 def unet_block(filters, kernel_size, strides, name, transposed=False, bn=False, relu=True, dropout=False):
