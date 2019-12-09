@@ -1,7 +1,7 @@
 from compose import *
-from keras.applications import vgg19
-from keras.layers import AvgPool2D, BatchNormalization, Conv2D, Dense, Flatten, Input, ReLU, UpSampling2D
-from keras.models import Model
+from tensorflow.keras.applications import vgg19
+from tensorflow.keras.layers import AvgPool2D, BatchNormalization, Conv2D, Dense, Flatten, Input, ReLU, UpSampling2D
+from tensorflow.keras.models import Model
 
 __all__ = ['VGG19ca']
 
