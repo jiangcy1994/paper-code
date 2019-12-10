@@ -54,14 +54,14 @@ class Derain:
     def train_step(self, image, label, target):
         with tf.GradientTape(persistent=True) as tape:
 
+            real_label = tf.fill(self.label_shape, label)
             fake_residue, fake_target = self.generator(
-                [image, label], training=True)
-            real_residue = tf.subtract(target, label)
+                [image, real_label], training=True)
 
             l_ed = self.euclidean_derain_loss(target, fake_target)
             l_f = self.feature_based_loss(target, fake_target)
 
-            total_gen_loss = l_er + l_ed + l_f
+            total_gen_loss = l_ed + l_f
 
         generator_gradients = tape.gradient(
             total_gen_loss, self.generator.trainable_variables)
