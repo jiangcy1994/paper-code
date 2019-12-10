@@ -7,7 +7,7 @@ from math import log2
 from tensorflow.keras.layers import Activation, Add, BatchNormalization, Concatenate, Conv2D, Conv2DTranspose, Input, ReLU
 from tensorflow.keras.models import Model
 
-__all__ = ['encoder_decoder', 'unet', 'resnet_6blocks', 'resnet_9blocks']
+__all__ = ['autoencoder', 'unet', 'resnet_6blocks', 'resnet_9blocks']
 
 _base_unet_block = partial(unet_block, kernel_size=4, strides=2, bn=True)
 EncoderBlock = partial(_base_unet_block, transposed=False, relu=False)
