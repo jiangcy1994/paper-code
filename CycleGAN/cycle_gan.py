@@ -1,8 +1,6 @@
 import datetime
 import tensorflow as tf
-from tensorflow.keras.layers import Input
 from tensorflow.keras.losses import BinaryCrossentropy
-from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 import numpy as np
 from utils import *
@@ -29,8 +27,6 @@ class CycleGAN():
         self.discriminator_y_optimizer = Adam(2e-4, beta_1=0.5)
 
         self.loss_obj = BinaryCrossentropy(from_logits=True)
-
-        self.disc_patch = tuple(self.discriminator_x.output.shape)[1:]
 
         checkpoint_path = "./checkpoints/train"
 
