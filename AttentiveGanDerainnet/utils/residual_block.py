@@ -1,5 +1,5 @@
 from compose import *
-from keras.layers import Add, Conv2D, LeakyReLU
+from tensorflow.keras.layers import Add, Conv2D, LeakyReLU
 
 __all__ = ['residual_block']
 

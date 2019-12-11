@@ -1,6 +1,6 @@
 from compose import *
-from keras.layers import Activation, Conv2D, Dense, Input, LeakyReLU, Multiply
-from keras.models import Model
+from tensorflow.keras.layers import Activation, Conv2D, Dense, Input, LeakyReLU, Multiply
+from tensorflow.keras.models import Model
 
 __all__ = ['build_discriminative_net']
 

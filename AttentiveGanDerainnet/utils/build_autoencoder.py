@@ -1,7 +1,7 @@
 from compose import *
 from functools import partial
-from keras.layers import Activation, AvgPool2D, Conv2D, Deconv2D, Input, LeakyReLU
-from keras.models import Model
+from tensorflow.keras.layers import Activation, AvgPool2D, Conv2D, Deconv2D, Input, LeakyReLU
+from tensorflow.keras.models import Model
 
 __all__ = ['build_autoencoder']
 

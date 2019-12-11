@@ -1,5 +1,5 @@
-from keras.applications import vgg16
-from keras.models import Model
+from tensorflow.keras.applications import vgg16
+from tensorflow.keras.models import Model
 
 __all__ = ['VGG16_Feature']
 
