@@ -1,7 +1,7 @@
 from .blocks import *
 from compose import *
-from keras.layers import Activation, Add, Conv2D, Input
-from keras.models import Model
+from tensorflow.keras.layers import Activation, Add, Conv2D, Input
+from tensorflow.keras.models import Model
 
 __all__ = ['G']
 
@@ -40,7 +40,7 @@ def G(img_shape=(256, 256), input_num_channel=3, output_num_channel=3, num_filte
     img_input = Input(img_shape + (input_num_channel,))
 
     output = compose(
-        Activation('tanh', name='dlayer1.tanh')
+        Activation('tanh', name='dlayer1/tanh')
     )(G_base(img_input, output_num_channel, num_filters))
 
     return Model(inputs=[img_input], outputs=[output])

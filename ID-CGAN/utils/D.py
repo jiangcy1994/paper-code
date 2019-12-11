@@ -1,6 +1,6 @@
 from .blocks import *
 from compose import *
-from keras.layers import Activation, BatchNormalization, Conv2D, LeakyReLU
+from tensorflow.keras.layers import Activation, BatchNormalization, Conv2D, LeakyReLU
 
 __all__ = ['D']
 
@@ -31,7 +31,7 @@ def D(input_num_channel=3, output_num_channel=3, num_filters=8, num_layers=3):
         layers,
         UNetBlock_4_1(1, name='layerfinal', transposed=False,
                       bn=False, relu=False, dropout=False),
-        Activation('sigmoid', name='layerfinal.sigmoid')
+        Activation('sigmoid', name='layerfinal/sigmoid')
     )
     
     return layers
