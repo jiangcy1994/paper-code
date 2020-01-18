@@ -51,8 +51,8 @@ class DCPDN():
         l2_loss = tf.reduce_mean(tf.square(real_trans - generated_trans))
 
         # $L_{E,g}$
-        def get_gradient_h(x): return K.abs(x[:, :, :-1] - x[:, :, 1:])
-        def get_gradient_v(x): return K.abs(x[:, :-1] - x[:, 1:])
+        def get_gradient_h(x): return tf.abs(x[:, :, :-1] - x[:, :, 1:])
+        def get_gradient_v(x): return tf.abs(x[:, :-1] - x[:, 1:])
         lg_loss = tf.reduce_mean(tf.square(get_gradient_h(real_trans) - get_gradient_h(generated_trans))) + \
             tf.reduce_mean(tf.square(get_gradient_v(
                 real_trans) - get_gradient_v(generated_trans)))
@@ -73,7 +73,7 @@ class DCPDN():
         '''$L_{D}$'''
         return tf.reduce_mean(tf.square(real_img - generated_img))
 
-    def joint_loss(generated_img_label):
+    def joint_loss(self, generated_img_label):
         '''$L_{j}$'''
         j_loss = self.loss_obj(tf.ones_like(
             generated_img_label), generated_img_label)
@@ -95,9 +95,6 @@ class DCPDN():
             disc_real = self.discriminator([trans, target], training=True)
             disc_fake = self.discriminator(
                 [fake_trans, fake_target], training=True)
-
-            gen_g_loss = self.generator_loss(disc_fake_y)
-            gen_f_loss = self.generator_loss(disc_fake_x)
 
             disc_loss = self.discriminator_loss(disc_real, disc_fake)
 

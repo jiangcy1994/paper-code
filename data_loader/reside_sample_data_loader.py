@@ -3,15 +3,15 @@ import tensorflow as tf
 import numpy as np
 
 
-class RESIDEOTSDataLoader(DataLoader):
+class RESIDEOTSSampleDataLoader(DataLoader):
     def __init__(self,
                  img_shape=(256, 256),
                  clear_path='D:DataSet/RESIDE/OTS_ALPHA/clear_sl/',
                  depth_path='D:DataSet/RESIDE/OTS_ALPHA/depth/',
                  haze_path='D:DataSet/RESIDE/OTS_ALPHA/haze/',
-                 train_path='../data_loader/RESIDE_OTS_train.txt',
-                 test_path='../data_loader/RESIDE_OTS_test.txt'):
-        super(RESIDEOTSDataLoader, self).__init__(img_shape)
+                 train_path='../data_loader/RESIDE_OTS_sample_train.txt',
+                 test_path='../data_loader/RESIDE_OTS_sample_test.txt'):
+        super(RESIDEOTSSampleDataLoader, self).__init__(img_shape)
         self.dataset_name = self.__class__
         self.clear_path, self.depth_path, self.haze_path = clear_path, depth_path, haze_path
         self.train_path, self.test_path = train_path, test_path

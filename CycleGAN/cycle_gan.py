@@ -8,7 +8,7 @@ from utils import *
 
 class CycleGAN():
 
-    def __init__(self, img_shape=(256, 256, 3), ngf=32, ndf=64, lamdba_cycle=10.0, lambda_id=1.0):
+    def __init__(self, img_shape=(256, 256, 3), ngf=32, ndf=64, lamdba_cycle=10.0, lambda_id=1.0, checkpoint_path='./checkpoints/train'):
 
         self.img_rows, self.img_cols, self.channels = self.img_shape = img_shape
         self.ngf, self.ndf = ngf, ndf
@@ -28,7 +28,7 @@ class CycleGAN():
 
         self.loss_obj = BinaryCrossentropy(from_logits=True)
 
-        checkpoint_path = "./checkpoints/train"
+        self.checkpoint_path = checkpoint_path
 
         ckpt = tf.train.Checkpoint(generator_g=self.generator_g,
                                    generator_f=self.generator_f,
@@ -40,7 +40,7 @@ class CycleGAN():
                                    discriminator_y_optimizer=self.discriminator_y_optimizer)
 
         self.ckpt_manager = tf.train.CheckpointManager(
-            ckpt, checkpoint_path, max_to_keep=5)
+            ckpt, self.checkpoint_path, max_to_keep=5)
 
         if self.ckpt_manager.latest_checkpoint:
             ckpt.restore(self.ckpt_manager.latest_checkpoint)
@@ -144,9 +144,3 @@ class CycleGAN():
                 epoch + 1,
                 epochs,
                 datetime.datetime.now() - start))
-
-        ckpt_save_path = self.ckpt_manager.save()
-        print('Saving checkpoint for epoch {} at {}'.format(
-            epoch+1,
-            ckpt_save_path))
-        print('Time taken is {}\n'.format(datetime.datetime.now() - start))
